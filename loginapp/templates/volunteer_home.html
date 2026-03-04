@@ -1,0 +1,103 @@
+{% extends 'userbase.html' %}
+
+{% block title %}Volunteer Dashboard - EcoCleanUp{% endblock %}
+
+{% set active_page = 'home' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-5 mb-4">Welcome, {{ session.username }}!</h1>
+        </div>
+    </div>
+
+    {% if notifications %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">📢 Event Reminders</h5>
+                </div>
+                <div class="card-body">
+                    {% for notification in notifications %}
+                    <div class="alert alert-info mb-2">
+                        <strong>{{ notification.event_name }}</strong><br>
+                        {{ notification.message }}<br>
+                        <small>{{ notification.event_date.strftime('%B %d, %Y') }} at {{
+                            notification.event_time.strftime('%I:%M %p') }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title">
+                        <i class="bi bi-calendar-check fs-1 text-success"></i>
+                    </h5>
+                    <h6 class="card-subtitle mb-2 text-muted">Browse Events</h6>
+                    <p class="card-text">Find and register for upcoming cleanup events in your area.</p>
+                    <a href="{{ url_for('browse_events') }}" class="btn btn-outline-success">Find Events</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title">
+                        <i class="bi bi-clock-history fs-1 text-success"></i>
+                    </h5>
+                    <h6 class="card-subtitle mb-2 text-muted">My History</h6>
+                    <p class="card-text">Track your participation and see your impact.</p>
+                    <a href="{{ url_for('participation_history') }}" class="btn btn-outline-success">View History</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title">
+                        <i class="bi bi-person-circle fs-1 text-success"></i>
+                    </h5>
+                    <h6 class="card-subtitle mb-2 text-muted">My Profile</h6>
+                    <p class="card-text">Update your information and preferences.</p>
+                    <a href="{{ url_for('profile') }}" class="btn btn-outline-success">Edit Profile</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">🌍 Upcoming Events You've Registered For</h5>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_events %}
+                    <div class="list-group">
+                        {% for event in upcoming_events %}
+                        <div class="list-group-item">
+                            <h6 class="mb-1">{{ event.event_name }}</h6>
+                            <p class="mb-1">{{ event.location }}</p>
+                            <small>{{ event.event_date.strftime('%B %d, %Y') }} at {{ event.event_time.strftime('%I:%M %p') }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">You haven't registered for any upcoming events yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

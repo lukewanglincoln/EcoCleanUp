@@ -1,59 +1,159 @@
-{#
-	This is the base template for pages seen by a logged-in user, and provides
-	the top-level navigation menu.
-
-	Page templates based on this one should specify:
-		- A "title" block containing the page title (e.g. "User Profile")
-		- A "content" block containing the main HTML/Jinja content of the page.
-	
-	Each page should also set the "active_page" variable to control which top-
-	level menu item is highlighted as active (e.g. a homepage template based on
-	this one should include the line):
-		{% set active_page = 'home' %}
-	
-	Currently, the only available options are 'home' and 'profile'. You could
-	choose to continue with this same approach as you add other menu options,
-	using these two as an example, or find your own way to control which menu
-	item is shown as "active".
-#}
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>{% block title %}{% endblock %} - Login Example</title>
-		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-	</head>
-	<body>
-		<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% endblock %} - EcoCleanUp Hub</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root {
+            --bs-primary: #2e7d32;
+            --bs-primary-rgb: 46, 125, 50;
+            --bs-success: #4caf50;
+            --bs-success-rgb: 76, 175, 80;
+        }
+        .bg-primary {
+            background-color: #2e7d32 !important;
+        }
+        .btn-primary {
+            background-color: #2e7d32;
+            border-color: #2e7d32;
+        }
+        .btn-primary:hover {
+            background-color: #1b5e20;
+            border-color: #1b5e20;
+        }
+        .btn-outline-success {
+            color: #2e7d32;
+            border-color: #2e7d32;
+        }
+        .btn-outline-success:hover {
+            background-color: #2e7d32;
+            border-color: #2e7d32;
+        }
+        .text-success {
+            color: #2e7d32 !important;
+        }
+        .bg-success {
+            background-color: #4caf50 !important;
+        }
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+        .card {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            border-radius: 15px 15px 0 0 !important;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-		<nav class="navbar navbar-expand-sm navbar-dark bg-primary mb-3">
-			<div class="container-fluid">
-				<a class="navbar-brand" href="/">Login Example</a>
-				<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-					<span class="navbar-toggler-icon"></span>
-				</button>
-				<div class="collapse navbar-collapse" id="navbarSupportedContent">
-					<ul class="navbar-nav me-auto">
-						<li class="nav-item">
-							<a class="nav-link{{' active' if active_page=='home' else ''}}" href="{% if session['role'] == 'customer' %}{{ url_for('customer_home') }}{% elif session['role'] == 'staff' %}{{ url_for('staff_home') }}{% elif session['role'] == 'admin' %}{{ url_for('admin_home') }}{% endif %}">Home</a>
-						</li>
-						{# Add any new top-level menu items here. #}
-					</ul>
-					<ul class="navbar-nav">
-						<li class="nav-item">
-							<a class="nav-link{{' active' if active_page=='profile' else ''}}" href="{{ url_for('profile') }}">User Profile</a>
-						</li>
-						<li class="nav-item">
-							<a class="nav-link" href="{{ url_for('logout') }}">Log Out</a>
-						</li>
-					</ul>
-				</div>
-			</div>
-		</nav>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-tree-fill"></i> EcoCleanUp Hub
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link{{' active' if active_page == 'home' else ''}}" 
+                           href="{% if session['role'] == 'volunteer' %}{{ url_for('volunteer_home') }}
+                                  {% elif session['role'] == 'event_leader' %}{{ url_for('event_leader_home') }}
+                                  {% elif session['role'] == 'admin' %}{{ url_for('admin_home') }}{% endif %}">
+                            <i class="bi bi-house-door-fill"></i> Home
+                        </a>
+                    </li>
+                    
+                    {% if session['role'] == 'volunteer' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('browse_events') }}">
+                            <i class="bi bi-calendar-event"></i> Browse Events
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('participation_history') }}">
+                            <i class="bi bi-clock-history"></i> My History
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% if session['role'] == 'event_leader' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('manage_events') }}">
+                            <i class="bi bi-calendar-plus"></i> Manage Events
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('event_reports') }}">
+                            <i class="bi bi-graph-up"></i> Reports
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% if session['role'] == 'admin' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('manage_users') }}">
+                            <i class="bi bi-people-fill"></i> Users
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_reports') }}">
+                            <i class="bi bi-pie-chart-fill"></i> Reports
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('manage_zones') }}">
+                            <i class="bi bi-geo-alt-fill"></i> Zones
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+                
+                <ul class="navbar-nav">
+                    {% if session.get('unread_notifications', 0) > 0 %}
+                    <li class="nav-item">
+                        <span class="nav-link">
+                            <i class="bi bi-bell-fill text-warning"></i>
+                            <span class="badge bg-danger">{{ session['unread_notifications'] }}</span>
+                        </span>
+                    </li>
+                    {% endif %}
+                    
+                    <li class="nav-item">
+                        <a class="nav-link{{' active' if active_page == 'profile' else ''}}" 
+                           href="{{ url_for('profile') }}">
+                            <i class="bi bi-person-circle"></i> Profile
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
 
-		<main>
-			{% block content %}{% endblock %}
-		</main>
-	</body>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-light text-center text-muted py-4 mt-5">
+        <div class="container">
+            <p class="mb-0">EcoCleanUp Hub - Community Cleanup Management System</p>
+            <p class="mb-0"><small>Your Name | Student ID: [Your Student ID]</small></p>
+        </div>
+    </footer>
+</body>
 </html>

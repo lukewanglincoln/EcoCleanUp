@@ -27,7 +27,7 @@ When running locally, you can use any of the following approaches:
         you'll need to specify the app to run. For example, to run `loginapp`
         you'll need to enter `python -m flask --app loginapp run`. This method
         doesn't use run.py.
-        
+
 On PythonAnywhere and similar WSGI servers, you can do either of the following
 in your WSGI configuration file:
 
@@ -43,10 +43,11 @@ them bypass run.py entirely, don't put any of your application code in here.
 Think of run.py as a "shortcut" or "launcher" used to run your Flask app,
 rather than a core part of the app itself.
 """
+
 from loginapp import app
 
 # If run.py was actually executed (run), not just imported into another script,
 # then start our Flask app on a local development server. To learn more about
 # how we check for this, refer to https://realpython.com/if-name-main-python/.
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=8004)
