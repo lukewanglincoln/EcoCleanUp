@@ -1,39 +1,180 @@
 {% extends 'userbase.html' %}
 
-{% block title %}User Profile{% endblock %}
+{% block title %}My Profile - EcoCleanUp{% endblock %}
 
-{# Set the active page to be highlighted in the navigation bar. #}
 {% set active_page = 'profile' %}
 
 {% block content %}
-<section class="container py-5">
-    <div class="row justify-content-center text-center">
-        <div class="col-lg-7">
-            <h1>{{ profile.person_role.title() }} Profile</h1>
-            <p class="lead text-muted">Here's everything we know about you.</p>
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-5 mb-4">My Profile</h1>
+            
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="row">
+                <!-- Profile Image Column -->
+                <div class="col-md-4 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">Profile Picture</h5>
+                        </div>
+                        <div class="card-body text-center">
+                            {% if profile.profile_image and profile.profile_image != 'default_profile.jpg' %}
+                                <img src="{{ url_for('static', filename='uploads/' + profile.profile_image) }}" 
+                                     class="img-fluid rounded-circle mb-3" 
+                                     style="width: 200px; height: 200px; object-fit: cover;"
+                                     alt="Profile Picture">
+                            {% else %}
+                                <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" 
+                                     style="width: 200px; height: 200px; font-size: 4rem;">
+                                    {{ profile.full_name[0] if profile.full_name else 'U' }}
+                                </div>
+                            {% endif %}
+                            
+                            <form method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label for="profile_image" class="form-label">Update Profile Image</label>
+                                    <input type="file" class="form-control form-control-sm" id="profile_image" 
+                                           name="profile_image" accept="image/png, image/jpeg, image/jpg, image/gif">
+                                    <div class="form-text">Max size: 5MB</div>
+                                </div>
+                                <button type="submit" name="update_image" class="btn btn-sm btn-outline-success">
+                                    <i class="bi bi-upload"></i> Upload Image
+                                </button>
+                                {% if profile.profile_image and profile.profile_image != 'default_profile.jpg' %}
+                                <button type="submit" name="remove_image" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Remove profile picture?')">
+                                    <i class="bi bi-trash"></i> Remove
+                                </button>
+                                {% endif %}
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Details Column -->
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">Personal Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('profile') }}">
+                                <!-- Username (Read-only) -->
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">
+                                        <i class="bi bi-person-circle"></i> Username
+                                    </label>
+                                    <input type="text" class="form-control" id="username" 
+                                           value="{{ profile.username }}" disabled>
+                                    <div class="form-text">Username cannot be changed.</div>
+                                </div>
+
+                                <!-- Email -->
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">
+                                        <i class="bi bi-envelope"></i> Email Address
+                                    </label>
+                                    <input type="email" class="form-control" id="email" 
+                                           name="email" value="{{ profile.email }}" required>
+                                </div>
+
+                                <!-- Full Name -->
+                                <div class="mb-3">
+                                    <label for="full_name" class="form-label">
+                                        <i class="bi bi-person-badge"></i> Full Name
+                                    </label>
+                                    <input type="text" class="form-control" id="full_name" 
+                                           name="full_name" value="{{ profile.full_name }}" required>
+                                </div>
+
+                                <!-- Home Address -->
+                                <div class="mb-3">
+                                    <label for="home_address" class="form-label">
+                                        <i class="bi bi-house"></i> Home Address
+                                    </label>
+                                    <textarea class="form-control" id="home_address" 
+                                              name="home_address" rows="2" required>{{ profile.home_address }}</textarea>
+                                </div>
+
+                                <!-- Contact Number -->
+                                <div class="mb-3">
+                                    <label for="contact_number" class="form-label">
+                                        <i class="bi bi-telephone"></i> Contact Number
+                                    </label>
+                                    <input type="tel" class="form-control" id="contact_number" 
+                                           name="contact_number" value="{{ profile.contact_number }}" required>
+                                </div>
+
+                                <!-- Environmental Interests -->
+                                <div class="mb-3">
+                                    <label for="environmental_interests" class="form-label">
+                                        <i class="bi bi-heart"></i> Environmental Interests
+                                    </label>
+                                    <textarea class="form-control" id="environmental_interests" 
+                                              name="environmental_interests" rows="3">{{ profile.environmental_interests or '' }}</textarea>
+                                </div>
+
+                                <!-- Role (Read-only) -->
+                                <div class="mb-3">
+                                    <label for="role" class="form-label">
+                                        <i class="bi bi-shield"></i> Role
+                                    </label>
+                                    <input type="text" class="form-control" id="role" 
+                                           value="{{ profile.person_role|title }}" disabled>
+                                </div>
+
+                                <!-- Submit Button -->
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-check-circle"></i> Save Changes
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Change Password Card -->
+                    <div class="mt-4">
+                        <a href="{{ url_for('change_password') }}" class="btn btn-warning">
+                            <i class="bi bi-key"></i> Change Password
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</section>
+</div>
+
+<script>
+// Client-side password validation for change password
+document.addEventListener('DOMContentLoaded', function() {
+    const newPassword = document.getElementById('new_password');
+    const confirmPassword = document.getElementById('confirm_password');
     
-<section class="container">
-    <form>
-        <div class="row justify-content-center">
-            <div class="col-lg-3 mb-3">
-                <label for="username" class="form-label">Username</label>
-                <input type="text" class="form-control" id="username" name="username" value="{{ profile.username }}" disabled>
-            </div>
-            <div class="col-lg-3 mb-3">
-                <label for="useremail" class="form-label">Email</label>
-                <input type="text" class="form-control" id="useremail" name="useremail" value="{{ profile.email }}" disabled>
-            </div>
-        </div>
-        <div class="my-3 row justify-content-center">
-            <div class="col-lg-6">
-                <p>You could make the fields on this form editable, and add buttons to let users save or cancel any changes they make.</p>
-                <hr />
-                <p><small><em>Hint: Remember to think about validation and error handling: for example, what happens if users enter an invalid email address or a username that's already taken?</em></small></p>
-            </div>
-        </div>
-    </form>
-</section>
+    function validatePasswordMatch() {
+        if (confirmPassword.value) {
+            if (newPassword.value === confirmPassword.value) {
+                confirmPassword.setCustomValidity('');
+            } else {
+                confirmPassword.setCustomValidity('Passwords do not match');
+            }
+        }
+    }
+    
+    newPassword.addEventListener('change', validatePasswordMatch);
+    confirmPassword.addEventListener('keyup', validatePasswordMatch);
+});
+</script>
 {% endblock %}

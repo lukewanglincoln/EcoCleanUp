@@ -1,8 +1,10 @@
 import os
 import sys
-from flask import render_template, request, redirect, url_for, session
+from flask import render_template, request, redirect, url_for, session, flash
+from flask import send_from_directory
 import re
 from werkzeug.utils import secure_filename
+from datetime import datetime
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(current_dir))
@@ -13,6 +15,13 @@ DEFAULT_USER_ROLE = "volunteer"
 
 # Allowed image extensions
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
+
+
+@app.route("/static/uploads/<filename>")
+def uploaded_file(filename):
+    return send_from_directory(
+        os.path.join(app.root_path, "static", "uploads"), filename
+    )
 
 
 def allowed_file(filename):
@@ -240,45 +249,86 @@ def signup():
 def profile():
     """View and edit user profile."""
     if request.method == "POST":
-        # Update profile
-        full_name = request.form.get("full_name", "")
-        home_address = request.form.get("home_address", "")
-        contact_number = request.form.get("contact_number", "")
-        environmental_interests = request.form.get("environmental_interests", "")
+        # Check if this is an image upload/remove request
+        if "update_image" in request.form:
+            # Handle image upload
+            if "profile_image" in request.files:
+                file = request.files["profile_image"]
+                if file and file.filename and allowed_file(file.filename):
+                    # Generate unique filename
+                    # Create secure filename with timestamp to avoid duplicates
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    original_filename = secure_filename(file.filename)
+                    filename = f"{session['username']}_{timestamp}_{original_filename}"
 
-        # Handle profile image upload
-        if "profile_image" in request.files:
-            file = request.files["profile_image"]
-            if file and file.filename and allowed_file(file.filename):
-                filename = secure_filename(f"{session['username']}_{file.filename}")
-                file.save(os.path.join("static/uploads", filename))
+                    # Ensure upload directory exists
+                    upload_dir = os.path.join(app.root_path, "static", "uploads")
+                    os.makedirs(upload_dir, exist_ok=True)
 
-                with db.get_cursor() as cursor:
-                    cursor.execute(
-                        """
-                        UPDATE users 
-                        SET profile_image = %s
-                        WHERE user_id = %s;
-                    """,
-                        (filename, session["user_id"]),
-                    )
+                    # Save file
+                    file_path = os.path.join(upload_dir, filename)
+                    file.save(file_path)
 
-        with db.get_cursor() as cursor:
-            cursor.execute(
-                """
-                UPDATE users 
-                SET full_name = %s, home_address = %s, contact_number = %s, 
-                    environmental_interests = %s
-                WHERE user_id = %s;
-            """,
-                (
-                    full_name,
-                    home_address,
-                    contact_number,
-                    environmental_interests,
-                    session["user_id"],
-                ),
+                    # Update database with new filename
+                    with db.get_cursor() as cursor:
+                        cursor.execute(
+                            """
+                            UPDATE users 
+                            SET profile_image = %s 
+                            WHERE user_id = %s;
+                        """,
+                            (filename, session["user_id"]),
+                        )
+
+                    flash("Profile image updated successfully!", "success")
+        elif "remove_image" in request.form:
+            # Remove profile image
+            with db.get_cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE users 
+                    SET profile_image = 'default_profile.jpg' 
+                    WHERE user_id = %s;
+                """,
+                    (session["user_id"],),
+                )
+            # delete old image file if it exists and is not the default
+            image_path = os.path.join(
+                app.root_path, "static", "uploads", session.get("profile_image", "")
             )
+            if (
+                os.path.exists(image_path)
+                and session.get("profile_image", "") != "default_profile.jpg"
+            ):
+                os.remove(image_path)
+            flash("Profile image removed.", "success")
+        else:
+            # Update profile details
+            full_name = request.form.get("full_name", "")
+            email = request.form.get("email", "")
+            home_address = request.form.get("home_address", "")
+            contact_number = request.form.get("contact_number", "")
+            environmental_interests = request.form.get("environmental_interests", "")
+
+            with db.get_cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE users 
+                    SET full_name = %s, email = %s, home_address = %s, 
+                        contact_number = %s, environmental_interests = %s
+                    WHERE user_id = %s;
+                """,
+                    (
+                        full_name,
+                        email,
+                        home_address,
+                        contact_number,
+                        environmental_interests,
+                        session["user_id"],
+                    ),
+                )
+
+            flash("Profile updated successfully!", "success")
 
         return redirect(url_for("profile"))
 
@@ -315,25 +365,33 @@ def change_password():
             user = cursor.fetchone()
 
             if not bcrypt.check_password_hash(user["password_hash"], current_password):
-                return render_template(
-                    "change_password.html", error="Current password is incorrect."
-                )
+                flash("Current password is incorrect.", "error")
+                return redirect(url_for("profile"))
 
             # Validate new password
             if len(new_password) < 8:
-                return render_template(
-                    "change_password.html",
-                    error="Password must be at least 8 characters.",
-                )
+                flash("Password must be at least 8 characters.", "error")
+                return redirect(url_for("profile"))
+
+            if not re.search(r"[A-Z]", new_password):
+                flash("Password must contain at least one uppercase letter.", "error")
+                return redirect(url_for("profile"))
+
+            if not re.search(r"[a-z]", new_password):
+                flash("Password must contain at least one lowercase letter.", "error")
+                return redirect(url_for("profile"))
+
+            if not re.search(r"[0-9]", new_password):
+                flash("Password must contain at least one number.", "error")
+                return redirect(url_for("profile"))
+
             if new_password != confirm_password:
-                return render_template(
-                    "change_password.html", error="New passwords do not match."
-                )
+                flash("New passwords do not match.", "error")
+                return redirect(url_for("profile"))
+
             if new_password == current_password:
-                return render_template(
-                    "change_password.html",
-                    error="New password must be different from current password.",
-                )
+                flash("New password must be different from current password.", "error")
+                return redirect(url_for("profile"))
 
             # Update password
             new_password_hash = bcrypt.generate_password_hash(new_password).decode(
@@ -346,8 +404,10 @@ def change_password():
                 (new_password_hash, session["user_id"]),
             )
 
-            return render_template("change_password.html", success=True)
+            flash("Password changed successfully!", "success")
+            return redirect(url_for("profile"))
 
+    # GET request - show the change password page
     return render_template("change_password.html")
 
 

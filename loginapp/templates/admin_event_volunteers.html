@@ -1,0 +1,138 @@
+{% extends 'userbase.html' %}
+
+{% block title %}Event Volunteers - Admin{% endblock %}
+
+{% set active_page = 'home' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="mb-3">
+                <a href="{{ url_for('admin_manage_events') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Events
+                </a>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">{{ event.event_name }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Location:</strong> {{ event.location }}</p>
+                            <p><strong>Date:</strong> {{ event.event_date.strftime('%B %d, %Y') }}</p>
+                            <p><strong>Time:</strong> {{ event.event_time.strftime('%I:%M %p') }}</p>
+                            <p><strong>Duration:</strong> {{ event.duration_hours }} hours</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Zone:</strong> {{ event.zone_name or 'N/A' }}</p>
+                            <p><strong>Created By:</strong> {{ event.creator_name }} (@{{ event.creator_username }})</p>
+                            <p><strong>Status:</strong>
+                                <span class="badge bg-{{ 'success' if event.status == 'upcoming' else 'secondary' }}">
+                                    {{ event.status }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Volunteers List -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Registered Volunteers ({{ volunteers|length }})</h5>
+                </div>
+                <div class="card-body">
+                    {% if volunteers %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Volunteer</th>
+                                    <th>Contact</th>
+                                    <th>Registered On</th>
+                                    <th>Status</th>
+                                    <th>Bags</th>
+                                    <th>Recyclables</th>
+                                    <th>Rating</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for volunteer in volunteers %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if volunteer.profile_image and volunteer.profile_image !=
+                                            'default_profile.jpg' %}
+                                            <img src="{{ url_for('static', filename='uploads/' + volunteer.profile_image) }}"
+                                                class="rounded-circle me-2"
+                                                style="width: 30px; height: 30px; object-fit: cover;">
+                                            {% else %}
+                                            <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
+                                                style="width: 30px; height: 30px; font-size: 1rem;">
+                                                {{ volunteer.full_name[0] }}
+                                            </div>
+                                            {% endif %}
+                                            <div>
+                                                <strong>{{ volunteer.full_name }}</strong><br>
+                                                <small class="text-muted">@{{ volunteer.username }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {{ volunteer.email }}<br>
+                                        <small>{{ volunteer.contact_number }}</small>
+                                    </td>
+                                    <td>{{ volunteer.registration_date.strftime('%b %d, %Y') }}</td>
+                                    <td>
+                                        {% if volunteer.attendance_status == 'attended' %}
+                                        <span class="badge bg-success">Attended</span>
+                                        {% elif volunteer.attendance_status == 'registered' %}
+                                        <span class="badge bg-warning">Registered</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ volunteer.attendance_status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ volunteer.bags_collected or 0 }}</td>
+                                    <td>{{ volunteer.recyclables_sorted or 0 }}</td>
+                                    <td>
+                                        {% if volunteer.rating %}
+                                        {% for i in range(5) %}
+                                        {% if i < volunteer.rating %} <i class="bi bi-star-fill text-warning"></i>
+                                            {% else %}
+                                            <i class="bi bi-star text-warning"></i>
+                                            {% endif %}
+                                            {% endfor %}
+                                            {% else %}
+                                            -
+                                            {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('admin_view_volunteer_history', volunteer_id=volunteer.user_id) }}"
+                                            class="btn btn-sm btn-outline-info" title="View Full History">
+                                            <i class="bi bi-clock-history"></i>
+                                        </a>
+                                        {% if volunteer.feedback %}
+                                        <button type="button" class="btn btn-sm btn-outline-success"
+                                            data-bs-toggle="tooltip" title="{{ volunteer.feedback }}">
+                                            <i class="bi bi-chat-dots"></i>
+                                       </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No volunteers have registered for this event yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

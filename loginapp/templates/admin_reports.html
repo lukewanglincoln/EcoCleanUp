@@ -1,0 +1,160 @@
+{% extends 'userbase.html' %}
+
+{% block title %}Admin Reports - EcoCleanUp{% endblock %}
+
+{% set active_page = 'home' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-5 mb-4">Platform Reports</h1>
+
+            <!-- Monthly Statistics -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Monthly Event Statistics</h5>
+                </div>
+                <div class="card-body">
+                    {% if monthly_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Events</th>
+                                    <th>Unique Leaders</th>
+                                    <th>Total Volunteers</th>
+                                    <th>Avg Volunteers/Event</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in monthly_stats %}
+                                <tr>
+                                    <td>{{ stat.month }}</td>
+                                    <td>{{ stat.event_count }}</td>
+                                    <td>{{ stat.unique_leaders }}</td>
+                                    <td>{{ stat.total_volunteers or 0 }}</td>
+                                    <td>
+                                        {% if stat.event_count and stat.event_count > 0 %}
+                                        {{ ((stat.total_volunteers or 0) / stat.event_count)|round(1) }}
+                                        {% else %}
+                                        0
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No monthly data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Top Volunteers -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Top Volunteers</h5>
+                </div>
+                <div class="card-body">
+                    {% if top_volunteers %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Name</th>
+                                    <th>Username</th>
+                                    <th>Events Attended</th>
+                                    <th>Bags Collected</th>
+                                    <th>Avg Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for volunteer in top_volunteers %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ volunteer.full_name }}</td>
+                                    <td>{{ volunteer.username }}</td>
+                                    <td>{{ volunteer.events_attended }}</td>
+                                    <td>{{ volunteer.total_bags }}</td>
+                                    <td>
+                                        {% if volunteer.avg_rating %}
+                                        {% for i in range(5) %}
+                                        {% if i < volunteer.avg_rating|round %} <i class="bi bi-star-fill text-warning">
+                                            </i>
+                                            {% else %}
+                                            <i class="bi bi-star text-warning"></i>
+                                            {% endif %}
+                                            {% endfor %}
+                                            <br><small>({{ volunteer.avg_rating|round(1) }})</small>
+                                            {% else %}
+                                            No ratings
+                                            {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No volunteer data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Zone Statistics -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Zone Performance</h5>
+                </div>
+                <div class="card-body">
+                    {% if zone_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Zone</th>
+                                    <th>Events</th>
+                                    <th>Unique Volunteers</th>
+                                    <th>Bags Collected</th>
+                                    <th>Avg Bags/Event</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for zone in zone_stats %}
+                                <tr>
+                                    <td>{{ zone.zone_name }}</td>
+                                    <td>{{ zone.events or 0 }}</td>
+                                    <td>{{ zone.unique_volunteers or 0 }}</td>
+                                    <td>{{ zone.bags_collected }}</td>
+                                    <td>
+                                        {% if zone.events and zone.events > 0 %}
+                                        {{ (zone.bags_collected / zone.events)|round(1) }}
+                                        {% else %}
+                                        0
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">No zone data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Export Options -->
+            <div class="mt-3">
+                <button class="btn btn-outline-success" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Print Reports
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

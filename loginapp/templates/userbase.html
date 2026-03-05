@@ -67,58 +67,63 @@
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link{{' active' if active_page == 'home' else ''}}" 
-                           href="{% if session['role'] == 'volunteer' %}{{ url_for('volunteer_home') }}
-                                  {% elif session['role'] == 'event_leader' %}{{ url_for('event_leader_home') }}
-                                  {% elif session['role'] == 'admin' %}{{ url_for('admin_home') }}{% endif %}">
+                        href="{% if session['role'] == 'volunteer' %}{{ url_for('volunteer_home') }}
+                                {% elif session['role'] == 'event_leader' %}{{ url_for('event_leader_home') }}
+                                {% elif session['role'] == 'admin' %}{{ url_for('admin_home') }}{% endif %}">
                             <i class="bi bi-house-door-fill"></i> Home
                         </a>
                     </li>
                     
                     {% if session['role'] == 'volunteer' %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('browse_events') }}">
-                            <i class="bi bi-calendar-event"></i> Browse Events
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('participation_history') }}">
-                            <i class="bi bi-clock-history"></i> My History
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('browse_events') }}">
+                                <i class="bi bi-calendar-event"></i> Browse Events
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('participation_history') }}">
+                                <i class="bi bi-clock-history"></i> My History
+                            </a>
+                        </li>
                     {% endif %}
-                    
+
                     {% if session['role'] == 'event_leader' %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('manage_events') }}">
-                            <i class="bi bi-calendar-plus"></i> Manage Events
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('event_reports') }}">
-                            <i class="bi bi-graph-up"></i> Reports
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('manage_events') }}">
+                                <i class="bi bi-calendar-plus"></i> Manage Events
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('event_reports') }}">
+                                <i class="bi bi-graph-up"></i> Reports
+                            </a>
+                        </li>
                     {% endif %}
-                    
+                  
                     {% if session['role'] == 'admin' %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('manage_users') }}">
-                            <i class="bi bi-people-fill"></i> Users
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_reports') }}">
-                            <i class="bi bi-pie-chart-fill"></i> Reports
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('manage_zones') }}">
-                            <i class="bi bi-geo-alt-fill"></i> Zones
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_manage_events') }}">
+                                <i class="bi bi-calendar-event"></i> All Events
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('manage_users') }}">
+                                <i class="bi bi-people-fill"></i> Users
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('manage_zones') }}">
+                                <i class="bi bi-geo-alt-fill"></i> Zones
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_reports') }}">
+                                <i class="bi bi-pie-chart-fill"></i> Reports
+                            </a>
+                        </li>
                     {% endif %}
                 </ul>
-                
+
                 <ul class="navbar-nav">
                     {% if session.get('unread_notifications', 0) > 0 %}
                     <li class="nav-item">
@@ -152,7 +157,7 @@
     <footer class="bg-light text-center text-muted py-4 mt-5">
         <div class="container">
             <p class="mb-0">EcoCleanUp Hub - Community Cleanup Management System</p>
-            <p class="mb-0"><small>Your Name | Student ID: [Your Student ID]</small></p>
+            <p class="mb-0"><small>Luke Wang | Student ID: 1152480</small></p>
         </div>
     </footer>
 </body>

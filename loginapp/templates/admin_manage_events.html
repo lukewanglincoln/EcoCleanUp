@@ -1,0 +1,99 @@
+{% extends 'userbase.html' %}
+
+{% block title %}Manage All Events - Admin{% endblock %}
+
+{% set active_page = 'home' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-5 mb-4">Manage All Events</h1>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show"
+                role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            {% if events %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-success">
+                        <tr>
+                            <th>Event Name</th>
+                            <th>Location</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Created By</th>
+                            <th>Zone</th>
+                            <th>Volunteers</th>
+                            <th>Attended</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in events %}
+                        <tr>
+                            <td>{{ event.event_name }}</td>
+                            <td>{{ event.location }}</td>
+                            <td>{{ event.event_date.strftime('%b %d, %Y') }}</td>
+                            <td>{{ event.event_time.strftime('%I:%M %p') }}</td>
+                            <td>
+                                {{ event.creator_name }}<br>
+                                <small class="text-muted">@{{ event.creator_username }}</small>
+                            </td>
+                            <td>{{ event.zone_name or 'N/A' }}</td>
+                            <td>{{ event.volunteer_count or 0 }}</td>
+                            <td>{{ event.attended_count or 0 }}</td>
+                            <td>
+                                {% if event.status == 'upcoming' %}
+                                <span class="badge bg-success">Upcoming</span>
+                                {% elif event.status == 'completed' %}
+                                <span class="badge bg-secondary">Completed</span>
+                                {% elif event.status == 'cancelled' %}
+                                <span class="badge bg-danger">Cancelled</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('admin_view_event_volunteers', event_id=event.event_id) }}"
+                                        class="btn btn-sm btn-outline-success" title="View Volunteers">
+                                        <i class="bi bi-people"></i>
+                                    </a>
+                                    <a href="{{ url_for('admin_edit_event', event_id=event.event_id) }}"
+                                        class="btn btn-sm btn-outline-primary" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form method="POST"
+                                        action="{{ url_for('admin_cancel_event', event_id=event.event_id) }}"
+                                        class="d-inline"
+                                        onsubmit="return confirm('Are you sure you want to cancel this event?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancel">
+                                            <i class="bi bi-x-circle"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle-fill"></i> No events found.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

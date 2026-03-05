@@ -35,3 +35,4 @@ from loginapp import customer
 from loginapp import volunteer
 from loginapp import staff
 from loginapp import admin
+from loginapp import event_leader

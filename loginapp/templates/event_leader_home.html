@@ -1,0 +1,135 @@
+{% extends 'userbase.html' %}
+
+{% block title %}Event Leader Dashboard - EcoCleanUp{% endblock %}
+
+{% set active_page = 'home' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="display-5 mb-4">Welcome, {{ user.full_name }}!</h1>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-success">{{ stats.total_events or 0 }}</h3>
+                    <p class="text-muted mb-0">Total Events</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-success">{{ stats.upcoming_events or 0 }}</h3>
+                    <p class="text-muted mb-0">Upcoming Events</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-success">{{ stats.total_volunteers or 0 }}</h3>
+                    <p class="text-muted mb-0">Unique Volunteers</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-success">{{ stats.total_bags or 0 }}</h3>
+                    <p class="text-muted mb-0">Bags Collected</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3 class="text-success">{{ stats.total_recyclables or 0 }}</h3>
+                    <p class="text-muted mb-0">Recyclables Collected</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <a href="{{ url_for('create_event') }}" class="btn btn-success me-2">
+                        <i class="bi bi-plus-circle"></i> Create New Event
+                    </a>
+                    <a href="{{ url_for('manage_events') }}" class="btn btn-outline-success me-2">
+                        <i class="bi bi-calendar-check"></i> Manage Events
+                    </a>
+                    <a href="{{ url_for('event_reports') }}" class="btn btn-outline-success">
+                        <i class="bi bi-graph-up"></i> View Reports
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Events -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Recent Events</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_events %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Event Name</th>
+                                    <th>Location</th>
+                                    <th>Date</th>
+                                    <th>Volunteers</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in recent_events %}
+                                <tr>
+                                    <td>{{ event.event_name }}</td>
+                                    <td>{{ event.location }}</td>
+                                    <td>{{ event.event_date.strftime('%b %d, %Y') }}</td>
+                                    <td>{{ event.volunteers or 0 }}</td>
+                                    <td>
+                                        {% if event.status == 'upcoming' %}
+                                            <span class="badge bg-success">Upcoming</span>
+                                        {% elif event.status == 'completed' %}
+                                            <span class="badge bg-secondary">Completed</span>
+                                        {% elif event.status == 'cancelled' %}
+                                            <span class="badge bg-danger">Cancelled</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('view_event_volunteers', event_id=event.event_id) }}"
+                                            class="btn btn-sm btn-outline-success">View</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">You haven't created any events yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

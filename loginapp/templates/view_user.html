@@ -1,0 +1,137 @@
+{% extends 'userbase.html' %}
+
+{% block title %}User Details - EcoCleanUp{% endblock %}
+
+{% set active_page = 'home' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="mb-3">
+                <a href="{{ url_for('manage_users') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Users
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">User Details</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 text-center mb-3">
+                            {% if user.profile_image and user.profile_image != 'default_profile.jpg' %}
+                            <img src="{{ url_for('static', filename='uploads/' + user.profile_image) }}"
+                                class="img-fluid rounded-circle" style="max-width: 150px;" alt="Profile">
+                            {% else %}
+                            <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto"
+                                style="width: 150px; height: 150px; font-size: 3rem;">
+                                {{ user.full_name[0] }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-9">
+                            <table class="table">
+                                <tr>
+                                    <th style="width: 150px;">Username:</th>
+                                    <td>{{ user.username }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Full Name:</th>
+                                    <td>{{ user.full_name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Email:</th>
+                                    <td>{{ user.email }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Contact:</th>
+                                    <td>{{ user.contact_number }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Address:</th>
+                                    <td>{{ user.home_address }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Role:</th>
+                                    <td>
+                                        {% if user.person_role == 'admin' %}
+                                        <span class="badge bg-danger">Admin</span>
+                                        {% elif user.person_role == 'event_leader' %}
+                                        <span class="badge bg-warning">Event Leader</span>
+                                        {% else %}
+                                        <span class="badge bg-info">Volunteer</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Status:</th>
+                                    <td>
+                                        <span
+                                            class="badge bg-{{ 'success' if user.status == 'active' else 'secondary' }}">
+                                            {{ user.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Environmental Interests:</th>
+                                    <td>{{ user.environmental_interests or 'Not specified' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Member Since:</th>
+                                    <td>{{ user.created_at.strftime('%B %d, %Y') }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- User's Events -->
+                    <div class="mt-4">
+                        <h5>{{ 'Events Participated' if user.person_role == 'volunteer' else 'Events Created' }}</h5>
+                        {% if events %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Event Name</th>
+                                        <th>Date</th>
+                                        {% if user.person_role == 'volunteer' %}
+                                        <th>Status</th>
+                                        <th>Bags</th>
+                                        {% else %}
+                                        <th>Volunteers</th>
+                                        {% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for event in events %}
+                                    <tr>
+                                        <td>{{ event.event_name }}</td>
+                                        <td>{{ event.event_date.strftime('%b %d, %Y') }}</td>
+                                        {% if user.person_role == 'volunteer' %}
+                                        <td>
+                                            <span
+                                                class="badge bg-{{ 'success' if event.attendance_status == 'attended' else 'warning' }}">
+                                                {{ event.attendance_status }}
+                                            </span>
+                                        </td>
+                                        <td>{{ event.bags_collected or 0 }}</td>
+                                        {% else %}
+                                        <td>{{ event.volunteers or 0 }}</td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No events found.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
