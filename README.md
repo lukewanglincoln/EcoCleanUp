@@ -4,7 +4,27 @@ A web-based platform for managing community cleanup events, built with Python Fl
 ## Live Demo
 [EcoCleanUp Hub](https://lukewang639.pythonanywhere.com)
 
-## 🛠️ Technology Stack
+## System Login
+EcoCleanUp Hub addresses the challenges faced by community cleanup initiatives by providing:
+
+For Volunteers: A centralized platform to discover local cleanup events, register participation, track personal impact, and provide feedback
+
+For Event Leaders: Tools to create and manage events, coordinate volunteers, record cleanup outcomes, and generate reports
+
+For Administrators: Comprehensive oversight of users, events, and platform-wide analytics
+
+The application features role-based access control, responsive design for mobile and desktop use, and a sustainability-focused theme.
+
+### Test Accounts
+use the following username and password Password123! to log in as different roles:
+- Volunteer: 
+    sarah_wilson, mike_thompson, emma_chen, james_kumar, lisa_rodriguez, david_park, rachel_smith, tom_williams, anita_patel, kevin_brown, olivia_taylor, william_anderson, sophie_martin, liam_white, chloe_harris, jack_clark, emily_lewis, thomas_walker, grace_hall, benjamin_young
+- Event Leader:
+    helen_cooper, robert_foster, maria_santos, peter_nguyen, julia_adams
+- Administrator:
+    admin_sarah, admin_mark
+
+## Technology Stack
 Backend: Python, Flask
 Database: PostgreSQL
 Frontend: HTML5, CSS3, Bootstrap 5, JavaScript
