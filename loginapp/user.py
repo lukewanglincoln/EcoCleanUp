@@ -283,6 +283,19 @@ def profile():
                     flash("Profile image updated successfully!", "success")
         elif "remove_image" in request.form:
             # Remove profile image
+            profile_image = None
+            with db.get_cursor() as cursor:
+                cursor.execute(
+                    "SELECT profile_image FROM users WHERE user_id = %s;",
+                    (session["user_id"],),
+                )
+                user = cursor.fetchone()
+                if (
+                    user
+                    and user["profile_image"]
+                    and user["profile_image"] != "default_profile.jpg"
+                ):
+                    profile_image = user["profile_image"]
             with db.get_cursor() as cursor:
                 cursor.execute(
                     """
@@ -293,15 +306,13 @@ def profile():
                     (session["user_id"],),
                 )
             # delete old image file if it exists and is not the default
-            image_path = os.path.join(
-                app.root_path, "static", "uploads", session.get("profile_image", "")
-            )
-            if (
-                os.path.exists(image_path)
-                and session.get("profile_image", "") != "default_profile.jpg"
-            ):
-                os.remove(image_path)
-            flash("Profile image removed.", "success")
+            if profile_image:
+                image_path = os.path.join(
+                    app.root_path, "static", "uploads", profile_image
+                )
+                if os.path.exists(image_path):
+                    os.remove(image_path)
+                flash("Profile image removed.", "success")
         else:
             # Update profile details
             full_name = request.form.get("full_name", "")

@@ -80,7 +80,9 @@
                                         </div>
                                     {% endif %}
                                     <div>
-                                        <strong>{{ volunteer.full_name }}</strong><br>
+                                        <a href="{{ url_for('event_leader_view_volunteer_history', volunteer_id=volunteer.user_id) }}" class="text-decoration-none"> 
+                                            <strong>{{ volunteer.full_name }}</strong><br>
+                                        </a>
                                         <small class="text-muted">@{{ volunteer.username }}</small>
                                     </div>
                                 </div>
@@ -102,10 +104,6 @@
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href="{{ url_for('event_leader_view_volunteer_history', volunteer_id=volunteer.user_id) }}" 
-                                    class="btn btn-sm btn-outline-info" title="View History">
-                                        <i class="bi bi-clock-history"></i>
-                                    </a>
                                     <form method="POST" action="{{ url_for('remove_volunteer', event_id=event.event_id, volunteer_id=volunteer.user_id) }}" class="d-inline">
                                         <button type="submit" class="btn btn-sm btn-outline-danger" 
                                                 onclick="return confirm('Remove this volunteer from the event?')"

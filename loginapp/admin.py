@@ -356,45 +356,166 @@ def toggle_user_status(user_id):
 def admin_reports():
     """View platform-wide reports."""
     with db.get_cursor() as cursor:
-        # Events by month
+        # Platform-wide summary statistics
         cursor.execute(
             """
-            SELECT TO_CHAR(event_date, 'YYYY-MM') as month,
-                   COUNT(*) as event_count,
-                   COUNT(DISTINCT event_leader_id) as unique_leaders,
-                   SUM((SELECT COUNT(*) FROM event_registrations WHERE event_id = e.event_id)) as total_volunteers
+            SELECT 
+                (SELECT COUNT(*) FROM users WHERE role = 'volunteer') as total_volunteers,
+                (SELECT COUNT(*) FROM users WHERE role = 'event_leader') as total_event_leaders,
+                (SELECT COUNT(*) FROM users WHERE role = 'admin') as total_admins,
+                (SELECT COUNT(*) FROM events) as total_events,
+                (SELECT COUNT(*) FROM events WHERE event_date >= CURRENT_DATE) as upcoming_events,
+                (SELECT COUNT(*) FROM events WHERE event_date < CURRENT_DATE) as past_events,
+                (SELECT COUNT(*) FROM event_registrations) as total_registrations,
+                (SELECT COUNT(*) FROM feedback) as total_feedback,
+                (SELECT COALESCE(AVG(rating), 0) FROM feedback) as avg_rating,
+                (SELECT COALESCE(SUM(bags_collected), 0) FROM event_outcomes) as total_bags,
+                (SELECT COALESCE(SUM(recyclables_sorted), 0) FROM event_outcomes) as total_recyclables,
+                (SELECT COUNT(DISTINCT volunteer_id) FROM event_registrations) as active_volunteers
+            """
+        )
+        platform_stats = cursor.fetchone()
+
+        # Event reports - detailed per event
+        cursor.execute(
+            """
+            SELECT 
+                e.event_id,
+                e.event_name,
+                e.event_date,
+                e.location,
+                e.event_type,
+                u.full_name as event_leader_name,
+                u.username as event_leader_username,
+                COUNT(DISTINCT er.volunteer_id) as registered_volunteers,
+                COUNT(CASE WHEN er.attendance = 'attended' THEN 1 END) as attended_volunteers,
+                COUNT(CASE WHEN er.attendance = 'absent' THEN 1 END) as absent_volunteers,
+                COALESCE(eo.bags_collected, 0) as bags_collected,
+                COALESCE(eo.recyclables_sorted, 0) as recyclables_sorted,
+                COALESCE(eo.number_attendees, 0) as number_attendees,
+                COALESCE(AVG(f.rating), 0) as avg_rating,
+                COUNT(DISTINCT f.feedback_id) as feedback_count,
+                CASE 
+                    WHEN COUNT(DISTINCT er.volunteer_id) > 0 
+                    THEN ROUND(COUNT(CASE WHEN er.attendance = 'attended' THEN 1 END) * 100.0 / COUNT(DISTINCT er.volunteer_id), 1)
+                    ELSE 0 
+                END as attendance_rate
             FROM events e
-            WHERE event_date >= CURRENT_DATE - INTERVAL '6 months'
+            JOIN users u ON e.event_leader_id = u.user_id
+            LEFT JOIN event_registrations er ON e.event_id = er.event_id
+            LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
+            LEFT JOIN feedback f ON e.event_id = f.event_id
+            GROUP BY e.event_id, e.event_name, e.event_date, e.location, e.event_type, 
+                     u.full_name, u.username, eo.bags_collected, eo.recyclables_sorted, eo.number_attendees
+            ORDER BY e.event_date DESC;
+            """
+        )
+        event_reports = cursor.fetchall()
+
+        # Monthly statistics
+        cursor.execute(
+            """
+            SELECT 
+                TO_CHAR(event_date, 'YYYY-MM') as month,
+                COUNT(*) as event_count,
+                COUNT(DISTINCT event_leader_id) as unique_leaders,
+                COUNT(DISTINCT er.volunteer_id) as total_volunteers,
+                COUNT(CASE WHEN er.attendance = 'attended' THEN 1 END) as total_attended,
+                COALESCE(SUM(eo.bags_collected), 0) as total_bags,
+                COALESCE(SUM(eo.recyclables_sorted), 0) as total_recyclables,
+                COALESCE(AVG(f.rating), 0) as avg_rating
+            FROM events e
+            LEFT JOIN event_registrations er ON e.event_id = er.event_id
+            LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
+            LEFT JOIN feedback f ON e.event_id = f.event_id
+            WHERE e.event_date >= CURRENT_DATE - INTERVAL '12 months'
             GROUP BY TO_CHAR(event_date, 'YYYY-MM')
             ORDER BY month DESC;
-        """
+            """
         )
         monthly_stats = cursor.fetchall()
 
         # Top volunteers
-        # order by sum of total bags collected and recyclables sorted to get overall impact score
         cursor.execute(
             """
-            SELECT *
-                FROM (
-                    SELECT u.user_id, u.username, u.full_name,
-                        COUNT(DISTINCT er.event_id) as events_attended,
-                        SUM(eo.bags_collected) as total_bags,
-                        SUM(eo.recyclables_sorted) as total_recyclables,
-                        AVG(f.rating) as avg_rating
-                    FROM users u
-                    JOIN event_registrations er ON u.user_id = er.volunteer_id
-                    LEFT JOIN event_outcomes eo ON er.event_id = eo.event_id
-                    LEFT JOIN feedback f ON u.user_id = f.volunteer_id
-                    WHERE u.role = 'volunteer' AND er.attendance = 'attended'
-                    GROUP BY u.user_id, u.username, u.full_name
-                ) v
-            ORDER BY (total_bags + total_recyclables) DESC, avg_rating DESC
+            SELECT 
+                u.user_id,
+                u.username,
+                u.full_name,
+                COUNT(DISTINCT e.event_id) as events_attended,
+                COALESCE(SUM(eo.bags_collected), 0) as total_bags,
+                COALESCE(AVG(f.rating), 0) as avg_rating,
+                COUNT(DISTINCT f.feedback_id) as feedback_count
+            FROM users u
+            JOIN event_registrations er ON u.user_id = er.volunteer_id
+            JOIN events e ON er.event_id = e.event_id
+            LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
+            LEFT JOIN feedback f ON e.event_id = f.event_id AND f.volunteer_id = u.user_id
+            WHERE u.role = 'volunteer' 
+              AND er.attendance = 'attended'
+            GROUP BY u.user_id, u.username, u.full_name
+            HAVING COUNT(DISTINCT e.event_id) > 0
+            ORDER BY total_bags DESC, events_attended DESC
             LIMIT 10;
-        """
+            """
         )
         top_volunteers = cursor.fetchall()
 
+        # Event Leader Statistics
+        cursor.execute(
+            """
+            SELECT 
+                u.user_id,
+                u.username,
+                u.full_name,
+                COUNT(DISTINCT e.event_id) as events_created,
+                COUNT(DISTINCT er.volunteer_id) as unique_volunteers,
+                COUNT(DISTINCT CASE WHEN er.attendance = 'attended' THEN er.volunteer_id END) as volunteers_attended,
+                COALESCE(SUM(eo.bags_collected), 0) as total_bags,
+                COALESCE(SUM(eo.recyclables_sorted), 0) as total_recyclables,
+                COALESCE(AVG(f.rating), 0) as avg_event_rating,
+                COUNT(DISTINCT f.feedback_id) as total_feedback
+            FROM users u
+            LEFT JOIN events e ON u.user_id = e.event_leader_id
+            LEFT JOIN event_registrations er ON e.event_id = er.event_id
+            LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
+            LEFT JOIN feedback f ON e.event_id = f.event_id
+            WHERE u.role = 'event_leader'
+            GROUP BY u.user_id, u.username, u.full_name
+            ORDER BY total_bags DESC, events_created DESC;
+            """
+        )
+        leader_stats = cursor.fetchall()
+
+        # Zone/Category statistics (using event_type)
+        cursor.execute(
+            """
+            SELECT 
+                event_type,
+                COUNT(*) as event_count,
+                COUNT(DISTINCT event_leader_id) as leaders,
+                COUNT(DISTINCT er.volunteer_id) as unique_volunteers,
+                COUNT(CASE WHEN er.attendance = 'attended' THEN 1 END) as total_attended,
+                COALESCE(SUM(eo.bags_collected), 0) as bags_collected,
+                COALESCE(SUM(eo.recyclables_sorted), 0) as recyclables_sorted,
+                COALESCE(AVG(f.rating), 0) as avg_rating
+            FROM events e
+            LEFT JOIN event_registrations er ON e.event_id = er.event_id
+            LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
+            LEFT JOIN feedback f ON e.event_id = f.event_id
+            GROUP BY event_type
+            ORDER BY bags_collected DESC;
+            """
+        )
+        category_stats = cursor.fetchall()
+
     return render_template(
-        "admin_reports.html", monthly_stats=monthly_stats, top_volunteers=top_volunteers
+        "admin_reports.html",
+        platform_stats=platform_stats,
+        event_reports=event_reports,
+        monthly_stats=monthly_stats,
+        top_volunteers=top_volunteers,
+        leader_stats=leader_stats,
+        category_stats=category_stats,
+        now=datetime.now(),
     )

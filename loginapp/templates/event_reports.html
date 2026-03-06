@@ -1,6 +1,6 @@
 {% extends 'userbase.html' %}
 
-{% block title %}Event Reports - EcoCleanUp{% endblock %}
+{% block title %}My Event Reports - EcoCleanUp{% endblock %}
 
 {% set active_page = 'home' %}
 
@@ -8,130 +8,426 @@
 <div class="container py-4">
     <div class="row">
         <div class="col-12">
-            <h1 class="display-5 mb-4">Event Reports</h1>
+            <h1 class="display-5 mb-4">My Event Reports</h1>
+            
+            <!-- Leader Welcome -->
+            <div class="alert alert-success mb-4">
+                <i class="bi bi-person-circle"></i>
+                <strong>{{ leader.full_name if leader else session.username }}</strong> - 
+                Here's a summary of all events you've created.
+            </div>
 
             <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category if category != 'error' else 'danger' }}" role="alert">
-                {{ message }}
-            </div>
-            {% endfor %}
-            {% endif %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }}" role="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
             {% endwith %}
 
-            <!-- Summary Cards -->
+            <!-- Summary Statistics Cards -->
             <div class="row mb-4">
                 <div class="col-md-3">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h3 class="text-success">{{ reports|length }}</h3>
+                            <h3 class="text-success">{{ summary_stats.total_events or 0 }}</h3>
                             <p class="text-muted mb-0">Total Events</p>
+                            <small class="text-muted">
+                                {{ summary_stats.upcoming_events or 0 }} upcoming | 
+                                {{ summary_stats.past_events or 0 }} past
+                            </small>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h3 class="text-success">{{ reports|sum(attribute='total_registered') }}</h3>
-                            <p class="text-muted mb-0">Total Registrations</p>
+                            <h3 class="text-success">{{ summary_stats.unique_volunteers or 0 }}</h3>
+                            <p class="text-muted mb-0">Unique Volunteers</p>
+                            <small class="text-muted">{{ summary_stats.total_attendance or 0 }} total attendances</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h3 class="text-success">{{ reports|sum(attribute='total_bags') }}</h3>
-                            <p class="text-muted mb-0">Total Bags Collected</p>
+                            <h3 class="text-success">{{ summary_stats.total_bags or 0 }}</h3>
+                            <p class="text-muted mb-0">Total Bags</p>
+                            <small class="text-muted">{{ summary_stats.total_recyclables or 0 }} recyclables</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h3 class="text-success">{{ (reports|selectattr('avg_rating', 'ne',
-                                0)|list|sum(attribute='avg_rating') / (reports|selectattr('avg_rating', 'ne',
-                                0)|list|length or 1))|round(1) }}</h3>
+                            <h3 class="text-success">{{ summary_stats.avg_rating|round(1) or 0 }}</h3>
                             <p class="text-muted mb-0">Average Rating</p>
+                            <small class="text-muted">({{ summary_stats.total_feedback or 0 }} feedback entries)</small>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Reports Table -->
-            {% if reports %}
-            <div class="card">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Event Details</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Event Name</th>
-                                    <th>Date</th>
-                                    <th>Location</th>
-                                    <th>Registered</th>
-                                    <th>Attended</th>
-                                    <th>Attendance Rate</th>
-                                    <th>Bags</th>
-                                    <th>Recyclables</th>
-                                    <th>Avg Rating</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for report in reports %}
-                                <tr>
-                                    <td>{{ report.event_name }}</td>
-                                    <td>{{ report.event_date.strftime('%b %d, %Y') }}</td>
-                                    <td>{{ report.location }}</td>
-                                    <td>{{ report.total_registered or 0 }}</td>
-                                    <td>{{ report.attended or 0 }}</td>
-                                    <td>
-                                        {% if report.total_registered and report.total_registered > 0 %}
-                                        {{ ((report.attended or 0) / report.total_registered * 100)|round(1) }}%
-                                        {% else %}
-                                        0%
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ report.total_bags or 0 }}</td>
-                                    <td>{{ report.total_recyclables or 0 }}</td>
-                                    <td>
-                                        {% if report.avg_rating and report.avg_rating > 0 %}
-                                        {% for i in range(5) %}
-                                        {% if i < report.avg_rating|round %} <i class="bi bi-star-fill text-warning">
-                                            </i>
-                                            {% else %}
-                                            <i class="bi bi-star text-warning"></i>
-                                            {% endif %}
+            <!-- Navigation Tabs -->
+            <ul class="nav nav-tabs mb-4" id="reportTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">
+                        <i class="bi bi-calendar-event"></i> Event Details
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly" type="button" role="tab">
+                        <i class="bi bi-graph-up"></i> Monthly Breakdown
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="volunteers-tab" data-bs-toggle="tab" data-bs-target="#volunteers" type="button" role="tab">
+                        <i class="bi bi-people"></i> Top Volunteers
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="reportTabsContent">
+                <!-- Event Details Tab -->
+                <div class="tab-pane fade show active" id="events" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">My Events - Detailed Report</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if event_reports %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Event Name</th>
+                                                <th>Date</th>
+                                                <th>Location</th>
+                                                <th>Type</th>
+                                                <th>Status</th>
+                                                <th>Registered</th>
+                                                <th>Attended</th>
+                                                <th>Attendance %</th>
+                                                <th>Bags</th>
+                                                <th>Recyclables</th>
+                                                <th>Avg Rating</th>
+                                                <th>Feedback</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for event in event_reports %}
+                                            <tr class="{% if event.event_date < now.date() and event.status == 'upcoming' %}table-warning{% endif %}">
+                                                <td>
+                                                    <strong>{{ event.event_name }}</strong>
+                                                    {% if event.event_date < now.date() and event.status == 'upcoming' %}
+                                                        <span class="badge bg-warning text-dark ms-1" title="Past due">!</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ event.event_date.strftime('%b %d, %Y') }}</td>
+                                                <td>{{ event.location }}</td>
+                                                <td>{{ event.event_type }}</td>
+                                                <td>
+                                                    {% if event.status == 'completed' %}
+                                                        <span class="badge bg-success">Completed</span>
+                                                    {% elif event.status == 'cancelled' %}
+                                                        <span class="badge bg-danger">Cancelled</span>
+                                                    {% else %}
+                                                        <span class="badge bg-primary">Upcoming</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ event.registered_volunteers or 0 }}</td>
+                                                <td>{{ event.attended_volunteers or 0 }}</td>
+                                                <td>
+                                                    {% if event.attendance_rate %}
+                                                        <span class="badge bg-{{ 'success' if event.attendance_rate >= 70 else 'warning' if event.attendance_rate >= 50 else 'danger' }}">
+                                                            {{ event.attendance_rate }}%
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">0%</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if event.bags_collected %}
+                                                        <span class="badge bg-success">{{ event.bags_collected }}</span>
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if event.recyclables_sorted %}
+                                                        <span class="badge bg-info">{{ event.recyclables_sorted }}</span>
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if event.avg_rating and event.avg_rating > 0 %}
+                                                        <div class="text-nowrap">
+                                                            {% for i in range(5) %}
+                                                                {% if i < event.avg_rating|round %}
+                                                                    <i class="bi bi-star-fill text-warning small"></i>
+                                                                {% else %}
+                                                                    <i class="bi bi-star text-warning small"></i>
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                            <br>
+                                                            <small>({{ event.avg_rating|round(1) }})</small>
+                                                        </div>
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ event.feedback_count or 0 }}</td>
+                                                <td>
+                                                    <div class="btn-group" role="group">
+                                                        <a href="{{ url_for('view_event_volunteers', event_id=event.event_id) }}" 
+                                                           class="btn btn-sm btn-outline-success" title="View Volunteers">
+                                                            <i class="bi bi-people"></i>
+                                                        </a>
+                                                        {% if event.event_date < now.date() and not event.bags_collected and event.status != 'cancelled' %}
+                                                            <a href="{{ url_for('record_event_outcomes', event_id=event.event_id) }}" 
+                                                               class="btn btn-sm btn-outline-info" title="Record Outcomes">
+                                                                <i class="bi bi-clipboard-data"></i>
+                                                            </a>
+                                                        {% endif %}
+                                                    </div>
+                                                </td>
+                                            </tr>
                                             {% endfor %}
-                                            <br><small>({{ report.avg_rating|round(1) }})</small>
-                                            {% else %}
-                                            No ratings
-                                            {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle-fill"></i> 
+                                    You haven't created any events yet. 
+                                    <a href="{{ url_for('create_event') }}" class="alert-link">Create your first event</a>!
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monthly Breakdown Tab -->
+                <div class="tab-pane fade" id="monthly" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">Monthly Performance (Last 12 Months)</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if monthly_breakdown %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Month</th>
+                                                <th>Events</th>
+                                                <th>Volunteers</th>
+                                                <th>Attended</th>
+                                                <th>Attendance Rate</th>
+                                                <th>Bags Collected</th>
+                                                <th>Bags per Event</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for month in monthly_breakdown %}
+                                            <tr>
+                                                <td><strong>{{ month.month }}</strong></td>
+                                                <td>{{ month.event_count }}</td>
+                                                <td>{{ month.volunteers or 0 }}</td>
+                                                <td>{{ month.attended or 0 }}</td>
+                                                <td>
+                                                    {% if month.volunteers and month.volunteers > 0 %}
+                                                        <span class="badge bg-success">
+                                                            {{ ((month.attended or 0) / month.volunteers * 100)|round(1) }}%
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">0%</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ month.bags }}</td>
+                                                <td>
+                                                    {% if month.event_count > 0 %}
+                                                        {{ (month.bags / month.event_count)|round(1) }}
+                                                    {% else %}
+                                                        0
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- Monthly Chart (Optional visual representation) -->
+                                <div class="row mt-4">
+                                    <div class="col-12">
+                                        <div class="card bg-light">
+                                            <div class="card-body">
+                                                <h6 class="card-title">Monthly Trend</h6>
+                                                <div class="d-flex justify-content-between align-items-end" style="height: 150px;">
+                                                    {% for month in monthly_breakdown[:6] %}
+                                                    <div class="text-center" style="width: 60px;">
+                                                        <div class="bg-success" style="height: {{ (month.event_count * 20) if month.event_count < 5 else 100 }}px; min-height: 20px;"></div>
+                                                        <small>{{ month.month[-2:] }}</small>
+                                                        <br>
+                                                        <small class="text-muted">{{ month.event_count }} evts</small>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No monthly data available yet.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Volunteers Tab -->
+                <div class="tab-pane fade" id="volunteers" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">My Top Volunteers</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if top_volunteers %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Rank</th>
+                                                <th>Volunteer</th>
+                                                <th>Events Attended</th>
+                                                <th>Total Bags</th>
+                                                <th>Avg Rating</th>
+                                                <th>Contact</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for volunteer in top_volunteers %}
+                                            <tr>
+                                                <td>
+                                                    {% if loop.index == 1 %}
+                                                        <span class="badge bg-warning">🥇 #1</span>
+                                                    {% elif loop.index == 2 %}
+                                                        <span class="badge bg-secondary">🥈 #2</span>
+                                                    {% elif loop.index == 3 %}
+                                                        <span class="badge bg-bronze">🥉 #3</span>
+                                                    {% else %}
+                                                        #{{ loop.index }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <strong>{{ volunteer.full_name }}</strong><br>
+                                                    <small class="text-muted">@{{ volunteer.username }}</small>
+                                                </td>
+                                                <td>{{ volunteer.events_attended }}</td>
+                                                <td>{{ volunteer.total_bags }}</td>
+                                                <td>
+                                                    {% if volunteer.avg_rating and volunteer.avg_rating > 0 %}
+                                                        <div class="text-nowrap">
+                                                            {% for i in range(5) %}
+                                                                {% if i < volunteer.avg_rating|round %}
+                                                                    <i class="bi bi-star-fill text-warning small"></i>
+                                                                {% else %}
+                                                                    <i class="bi bi-star text-warning small"></i>
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                            <br>
+                                                            <small>({{ volunteer.avg_rating|round(1) }})</small>
+                                                        </div>
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <a href="mailto:{{ volunteer.email }}" class="text-decoration-none">
+                                                        <i class="bi bi-envelope"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle-fill"></i> 
+                                    No volunteer data available yet. Volunteers need to attend your events to appear here.
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- Export Options -->
-            <div class="mt-3">
+            <div class="mt-4">
                 <button class="btn btn-outline-success" onclick="window.print()">
-                    <i class="bi bi-printer"></i> Print Report
+                    <i class="bi bi-printer"></i> Print Reports
                 </button>
+                <a href="{{ url_for('manage_events') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Events
+                </a>
             </div>
-            {% else %}
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle-fill"></i> No event data available yet.
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
+
+<style>
+    .nav-tabs .nav-link {
+        color: #2e7d32;
+        font-weight: 500;
+    }
+    .nav-tabs .nav-link.active {
+        background-color: #2e7d32 !important;
+        color: white !important;
+        border-color: #2e7d32;
+    }
+    .badge.bg-success {
+        background-color: #2e7d32 !important;
+    }
+    .badge.bg-warning {
+        background-color: #ff9800 !important;
+        color: #000 !important;
+    }
+    .badge.bg-danger {
+        background-color: #dc3545 !important;
+    }
+    .badge.bg-bronze {
+        background-color: #cd7f32 !important;
+        color: white !important;
+    }
+    .table-warning {
+        background-color: #fff3e0;
+    }
+    @media print {
+        .nav-tabs, .btn, .navbar, footer {
+            display: none !important;
+        }
+        .tab-pane {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+        .card {
+            break-inside: avoid;
+            border: 1px solid #000 !important;
+            margin-bottom: 20px;
+        }
+        .badge {
+            border: 1px solid #000 !important;
+            color: #000 !important;
+            background: transparent !important;
+        }
+    }
+</style>
 {% endblock %}

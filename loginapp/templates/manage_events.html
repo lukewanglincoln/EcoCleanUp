@@ -86,6 +86,9 @@
                                     <th>Bags</th>
                                     <th>Recyclables</th>
                                 {% endif %}
+                                {% if filter_status == 'completed' %}
+                                    <th>Feedback</th>
+                                {% endif %}
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -118,6 +121,21 @@
                                                 <span class="badge bg-info">{{ event.recyclables_sorted }}</span>
                                             {% else %}
                                                 -
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+                                    {% if filter_status == 'completed' %}
+                                        <td>
+                                            {% if event.feedback_count > 0 %}
+                                                <a href="{{ url_for('view_event_feedback', event_id=event.event_id) }}" 
+                                                class="text-decoration-none">
+                                                    <span class="badge bg-info text-white fs-6 p-2">
+                                                        <i class="bi bi-chat-dots"></i> 
+                                                        {{ event.feedback_count }} feedback
+                                                    </span>
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
                                             {% endif %}
                                         </td>
                                     {% endif %}
@@ -154,14 +172,6 @@
                                                 </a>
                                             {% endif %}
                                             
-                                            <!-- View Outcomes button - for events with recorded outcomes -->
-                                            {% if event.bags_collected %}
-                                                <a href="{{ url_for('record_event_outcomes', event_id=event.event_id) }}" 
-                                                   class="btn btn-sm btn-outline-secondary" title="View/Edit Outcomes">
-                                                    <i class="bi bi-eye"></i>
-                                                </a>
-                                            {% endif %}
-
                                             <!-- Cancel button - only for upcoming events -->
                                             {% if event.status == 'upcoming' %}
                                                 <form method="POST" action="{{ url_for('cancel_event', event_id=event.event_id) }}" 

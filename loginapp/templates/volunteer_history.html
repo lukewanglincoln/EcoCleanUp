@@ -1,6 +1,6 @@
 {% extends 'userbase.html' %}
 
-{% block title %}Volunteer History - Admin{% endblock %}
+{% block title %}Volunteer History - {{ volunteer.full_name }}{% endblock %}
 
 {% set active_page = 'home' %}
 
@@ -8,11 +8,17 @@
 <div class="container py-4">
     <div class="row">
         <div class="col-12">
-            <!-- Back Button -->
+            <!-- Back Button - Conditional based on role -->
             <div class="mb-3">
-                <a href="{{ url_for('manage_users') }}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to Users
-                </a>
+                {% if session.role == 'admin' %}
+                    <a href="{{ url_for('manage_users') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Users
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('manage_events') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Events
+                    </a>
+                {% endif %}
             </div>
 
             <!-- Volunteer Header -->
@@ -57,18 +63,12 @@
                 </div>
             </div>
 
-            <!-- Statistics -->
-            {% set total_events = history|length %}
-            {% set attended_events = history|selectattr('attendance', 'equalto', 'attended')|list|length %}
-            {% set total_bags = history|sum(attribute='bags_collected') %}
-            {% set total_recyclables = history|sum(attribute='recyclables_sorted') %}
-            {% set avg_rating = (history|selectattr('rating', 'ne', None)|list|sum(attribute='rating') / (history|selectattr('rating', 'ne', None)|list|length or 1))|round(1) %}
-            
+            <!-- Statistics - Now coming from SQL -->
             <div class="row mb-4">
                 <div class="col-md-2">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h5 class="text-success">{{ total_events }}</h5>
+                            <h5 class="text-success">{{ stats.total_events or 0 }}</h5>
                             <small>Total Events</small>
                         </div>
                     </div>
@@ -76,15 +76,15 @@
                 <div class="col-md-2">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h5 class="text-success">{{ attended_events }}</h5>
-                            <small>Attended</small>
+                            <h5 class="text-success">{{ attendance_rate|round(1) }}%</h5>
+                            <small>Attendance Rate</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-2">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h5 class="text-success">{{ total_bags }}</h5>
+                            <h5 class="text-success">{{ stats.total_bags or 0 }}</h5>
                             <small>Bags</small>
                         </div>
                     </div>
@@ -92,7 +92,7 @@
                 <div class="col-md-2">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h5 class="text-success">{{ total_recyclables }}</h5>
+                            <h5 class="text-success">{{ stats.total_recyclables or 0 }}</h5>
                             <small>Recyclables</small>
                         </div>
                     </div>
@@ -100,27 +100,24 @@
                 <div class="col-md-2">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h5 class="text-success">{{ avg_rating }}</h5>
-                            <small>Avg Rating</small>
+                            <h5 class="text-success">
+                                {% if stats.feedback_count and stats.feedback_count > 0 %}
+                                    {{ ((stats.feedback_count / stats.attended_events) * 100)|round(1) if stats.attended_events > 0 else 0 }}%
+                                {% else %}0%{% endif %}
+                            </h5>
+                            <small>Feedback Rate</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-2">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h5 class="text-success">
-                                {% if total_events > 0 %}
-                                    {{ (attended_events / total_events * 100)|round }}%
-                                {% else %}
-                                    0%
-                                {% endif %}
-                            </h5>
-                            <small>Attendance Rate</small>
+                            <h5 class="text-success">{{ stats.avg_rating|round(1) or 0 }}</h5>
+                            <small>Avg Rating</small>
                         </div>
                     </div>
                 </div>
             </div>
-
             <!-- History Table -->
             <div class="card">
                 <div class="card-header bg-success text-white">
@@ -155,12 +152,14 @@
                                                 <span class="badge bg-success">Attended</span>
                                             {% elif record.attendance == 'registered' %}
                                                 <span class="badge bg-warning text-dark">Registered</span>
+                                            {% elif record.attendance == 'absent' %}
+                                                <span class="badge bg-danger">Absent</span>
                                             {% else %}
                                                 <span class="badge bg-secondary">{{ record.attendance }}</span>
                                             {% endif %}
                                         </td>
-                                        <td>{{ record.bags_collected or 0 }}</td>
-                                        <td>{{ record.recyclables_sorted or 0 }}</td>
+                                        <td>{{ record.bags_collected|default(0) }}</td>
+                                        <td>{{ record.recyclables_sorted|default(0) }}</td>
                                         <td>
                                             {% if record.rating %}
                                                 <div class="text-nowrap">
@@ -256,6 +255,12 @@
             color: #000 !important;
             background: transparent !important;
         }
+    }
+    .text-success {
+        color: #2e7d32 !important;
+    }
+    .bg-success {
+        background-color: #2e7d32 !important;
     }
 </style>
 {% endblock %}

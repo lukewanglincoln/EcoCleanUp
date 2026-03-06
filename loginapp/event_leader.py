@@ -65,7 +65,6 @@ def event_leader_home():
 
 
 # ==================== MANAGE EVENTS ====================
-# ==================== MANAGE EVENTS ====================
 @app.route("/event_leader/events")
 @login_required
 @role_required("event_leader")
@@ -82,7 +81,8 @@ def manage_events():
                    (SELECT COUNT(*) FROM event_registrations WHERE event_id = e.event_id AND attendance = 'attended') as attended_count,
                    eo.bags_collected,
                    eo.recyclables_sorted,
-                   eo.number_attendees
+                   eo.number_attendees,
+                   (SELECT COUNT(*) FROM feedback WHERE event_id = e.event_id) as feedback_count
             FROM events e
             LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
             WHERE e.event_leader_id = %s
@@ -122,6 +122,50 @@ def manage_events():
         current_date=current_date,
         filter_status=filter_status,
         counts=counts,
+    )
+
+
+# ==================== VIEW EVENT FEEDBACK ====================
+@app.route("/event_leader/events/<int:event_id>/feedback")
+@login_required
+@role_required("event_leader")
+def view_event_feedback(event_id):
+    """View all feedback for a specific event."""
+    with db.get_cursor() as cursor:
+        # Verify event belongs to this leader
+        cursor.execute(
+            """
+            SELECT event_name, event_date, location
+            FROM events 
+            WHERE event_id = %s AND event_leader_id = %s;
+            """,
+            (event_id, session["user_id"]),
+        )
+        event = cursor.fetchone()
+
+        if not event:
+            flash("Event not found or you don't have permission.", "error")
+            return redirect(url_for("manage_events"))
+
+        # Get all feedback for this event with volunteer details
+        cursor.execute(
+            """
+            SELECT f.*, 
+                   u.user_id,
+                   u.username, 
+                   u.full_name, 
+                   u.profile_image
+            FROM feedback f
+            JOIN users u ON f.volunteer_id = u.user_id
+            WHERE f.event_id = %s
+            ORDER BY f.rating DESC, f.submitted_at DESC;
+            """,
+            (event_id,),
+        )
+        feedback_list = cursor.fetchall()
+
+    return render_template(
+        "event_feedback.html", event=event, feedback_list=feedback_list
     )
 
 
@@ -338,7 +382,10 @@ def event_leader_view_volunteer_history(volunteer_id):
     with db.get_cursor() as cursor:
         # Get volunteer details
         cursor.execute(
-            "SELECT user_id, username, full_name, email, contact_number, profile_image FROM users WHERE user_id = %s;",
+            """
+            SELECT user_id, username, full_name, email, contact_number, profile_image 
+            FROM users WHERE user_id = %s;
+            """,
             (volunteer_id,),
         )
         volunteer = cursor.fetchone()
@@ -348,12 +395,12 @@ def event_leader_view_volunteer_history(volunteer_id):
             return redirect(url_for("manage_events"))
 
         # Get volunteer's event history for events created by this leader
-        # Note: bags and recyclables are at event level, not per volunteer
         cursor.execute(
             """
             SELECT e.event_name, e.event_date, e.location, e.event_type,
                    er.attendance,
-                   eo.bags_collected, eo.recyclables_sorted,
+                   COALESCE(eo.bags_collected, 0) as bags_collected,
+                   COALESCE(eo.recyclables_sorted, 0) as recyclables_sorted,
                    f.rating, f.comments as feedback
             FROM event_registrations er
             JOIN events e ON er.event_id = e.event_id
@@ -363,12 +410,53 @@ def event_leader_view_volunteer_history(volunteer_id):
             AND e.event_leader_id = %s
             ORDER BY e.event_date DESC;
             """,
-            (volunteer_id, session["user_id"]),
+            (
+                volunteer_id,
+                session["user_id"],
+            ),
         )
         history = cursor.fetchall()
 
+        # Get statistics for this volunteer in events created by this leader
+        cursor.execute(
+            """
+            SELECT 
+                COUNT(DISTINCT e.event_id) as total_events,
+                COUNT(CASE WHEN er.attendance = 'attended' THEN 1 END) as attended_events,
+                COUNT(CASE WHEN er.attendance = 'absent' THEN 1 END) as absent_events,
+                COALESCE(SUM(eo.bags_collected), 0) as total_bags,
+                COALESCE(SUM(eo.recyclables_sorted), 0) as total_recyclables,
+                COALESCE(AVG(f.rating), 0) as avg_rating,
+                COUNT(f.feedback_id) as feedback_count
+            FROM event_registrations er
+            JOIN events e ON er.event_id = e.event_id
+            LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
+            LEFT JOIN feedback f ON er.event_id = f.event_id AND er.volunteer_id = f.volunteer_id
+            WHERE er.volunteer_id = %s
+            AND e.event_leader_id = %s;
+            """,
+            (
+                volunteer_id,
+                session["user_id"],
+            ),
+        )
+        stats = cursor.fetchone()
+
+        # Calculate attendance rate (attended / (attended + absent) * 100)
+        total_attendance_events = (stats["attended_events"] or 0) + (
+            stats["absent_events"] or 0
+        )
+        if total_attendance_events > 0:
+            attendance_rate = stats["attended_events"] / total_attendance_events * 100
+        else:
+            attendance_rate = 0
+
     return render_template(
-        "volunteer_history.html", volunteer=volunteer, history=history
+        "volunteer_history.html",
+        volunteer=volunteer,
+        history=history,
+        stats=stats,
+        attendance_rate=attendance_rate,
     )
 
 
@@ -627,32 +715,125 @@ def cancel_event(event_id):
 def event_reports():
     """View reports for all events created by this leader."""
     with db.get_cursor() as cursor:
+        # Get event leader details
+        cursor.execute(
+            "SELECT full_name, username FROM users WHERE user_id = %s;",
+            (session["user_id"],),
+        )
+        leader = cursor.fetchone()
+
+        # Event reports - detailed per event for this leader
         cursor.execute(
             """
             SELECT 
-                e.event_id, 
-                e.event_name, 
-                e.event_date, 
+                e.event_id,
+                e.event_name,
+                e.event_date,
                 e.location,
                 e.event_type,
-                COUNT(DISTINCT er.volunteer_id) as total_registered,
-                COUNT(CASE WHEN er.attendance = 'attended' THEN 1 END) as attended,
-                COALESCE(eo.bags_collected, 0) as total_bags,
-                COALESCE(eo.recyclables_sorted, 0) as total_recyclables,
+                e.status,
+                COUNT(DISTINCT er.volunteer_id) as registered_volunteers,
+                COUNT(CASE WHEN er.attendance = 'attended' THEN 1 END) as attended_volunteers,
+                COUNT(CASE WHEN er.attendance = 'absent' THEN 1 END) as absent_volunteers,
+                COALESCE(eo.bags_collected, 0) as bags_collected,
+                COALESCE(eo.recyclables_sorted, 0) as recyclables_sorted,
                 COALESCE(eo.number_attendees, 0) as number_attendees,
                 COALESCE(AVG(f.rating), 0) as avg_rating,
-                COUNT(DISTINCT f.feedback_id) as feedback_count
+                COUNT(DISTINCT f.feedback_id) as feedback_count,
+                CASE 
+                    WHEN COUNT(DISTINCT er.volunteer_id) > 0 
+                    THEN ROUND(COUNT(CASE WHEN er.attendance = 'attended' THEN 1 END) * 100.0 / COUNT(DISTINCT er.volunteer_id), 1)
+                    ELSE 0 
+                END as attendance_rate
             FROM events e
             LEFT JOIN event_registrations er ON e.event_id = er.event_id
             LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
             LEFT JOIN feedback f ON e.event_id = f.event_id
             WHERE e.event_leader_id = %s
             GROUP BY e.event_id, e.event_name, e.event_date, e.location, e.event_type, 
-                     eo.bags_collected, eo.recyclables_sorted, eo.number_attendees
+                     e.status, eo.bags_collected, eo.recyclables_sorted, eo.number_attendees
             ORDER BY e.event_date DESC;
             """,
             (session["user_id"],),
         )
-        reports = cursor.fetchall()
+        event_reports = cursor.fetchall()
 
-    return render_template("event_reports.html", reports=reports)
+        # Summary statistics for this leader
+        cursor.execute(
+            """
+            SELECT 
+                COUNT(DISTINCT e.event_id) as total_events,
+                COUNT(DISTINCT CASE WHEN e.event_date >= CURRENT_DATE THEN e.event_id END) as upcoming_events,
+                COUNT(DISTINCT CASE WHEN e.event_date < CURRENT_DATE THEN e.event_id END) as past_events,
+                COUNT(DISTINCT er.volunteer_id) as unique_volunteers,
+                COUNT(CASE WHEN er.attendance = 'attended' THEN 1 END) as total_attendance,
+                COALESCE(SUM(eo.bags_collected), 0) as total_bags,
+                COALESCE(SUM(eo.recyclables_sorted), 0) as total_recyclables,
+                COALESCE(AVG(f.rating), 0) as avg_rating,
+                COUNT(DISTINCT f.feedback_id) as total_feedback
+            FROM events e
+            LEFT JOIN event_registrations er ON e.event_id = er.event_id
+            LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
+            LEFT JOIN feedback f ON e.event_id = f.event_id
+            WHERE e.event_leader_id = %s;
+            """,
+            (session["user_id"],),
+        )
+        summary_stats = cursor.fetchone()
+
+        # Monthly breakdown for this leader
+        cursor.execute(
+            """
+            SELECT 
+                TO_CHAR(event_date, 'YYYY-MM') as month,
+                COUNT(*) as event_count,
+                COUNT(DISTINCT er.volunteer_id) as volunteers,
+                COUNT(CASE WHEN er.attendance = 'attended' THEN 1 END) as attended,
+                COALESCE(SUM(eo.bags_collected), 0) as bags
+            FROM events e
+            LEFT JOIN event_registrations er ON e.event_id = er.event_id
+            LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
+            WHERE e.event_leader_id = %s
+              AND e.event_date >= CURRENT_DATE - INTERVAL '12 months'
+            GROUP BY TO_CHAR(event_date, 'YYYY-MM')
+            ORDER BY month DESC;
+            """,
+            (session["user_id"],),
+        )
+        monthly_breakdown = cursor.fetchall()
+
+        # Top volunteers for this leader's events
+        cursor.execute(
+            """
+            SELECT 
+                u.user_id,
+                u.username,
+                u.full_name,
+                COUNT(DISTINCT e.event_id) as events_attended,
+                COALESCE(SUM(eo.bags_collected), 0) as total_bags,
+                COALESCE(AVG(f.rating), 0) as avg_rating
+            FROM users u
+            JOIN event_registrations er ON u.user_id = er.volunteer_id
+            JOIN events e ON er.event_id = e.event_id
+            LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
+            LEFT JOIN feedback f ON e.event_id = f.event_id AND f.volunteer_id = u.user_id
+            WHERE e.event_leader_id = %s
+              AND er.attendance = 'attended'
+            GROUP BY u.user_id, u.username, u.full_name
+            HAVING COUNT(DISTINCT e.event_id) > 0
+            ORDER BY total_bags DESC, events_attended DESC
+            LIMIT 10;
+            """,
+            (session["user_id"],),
+        )
+        top_volunteers = cursor.fetchall()
+
+    return render_template(
+        "event_reports.html",
+        leader=leader,
+        event_reports=event_reports,
+        summary_stats=summary_stats,
+        monthly_breakdown=monthly_breakdown,
+        top_volunteers=top_volunteers,
+        now=datetime.now(),
+    )

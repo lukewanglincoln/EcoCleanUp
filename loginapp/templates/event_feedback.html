@@ -1,0 +1,131 @@
+{% extends 'userbase.html' %}
+
+{% block title %}Event Feedback - {{ event.event_name }}{% endblock %}
+
+{% set active_page = 'home' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Back Button -->
+            <div class="mb-3">
+                <a href="{{ url_for('manage_events') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Events
+                </a>
+            </div>
+
+            <!-- Event Header -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-chat-dots"></i>
+                        Feedback for: {{ event.event_name }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">
+                        <strong>Date:</strong> {{ event.event_date.strftime('%B %d, %Y') }}<br>
+                        <strong>Location:</strong> {{ event.location }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Feedback List -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-people"></i>
+                        Volunteer Feedback ({{ feedback_list|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if feedback_list %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Volunteer</th>
+                                    <th>Rating</th>
+                                    <th>Feedback</th>
+                                    <th>Submitted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fb in feedback_list %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if fb.profile_image and fb.profile_image != 'default_profile.jpg' %}
+                                            <img src="{{ url_for('static', filename='uploads/' + fb.profile_image) }}"
+                                                class="rounded-circle me-2"
+                                                style="width: 30px; height: 30px; object-fit: cover;">
+                                            {% else %}
+                                            <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
+                                                style="width: 30px; height: 30px; font-size: 0.9rem;">
+                                                {{ fb.full_name[0] }}
+                                            </div>
+                                            {% endif %}
+                                            <div>
+                                                 <a href="{{ url_for('event_leader_view_volunteer_history', volunteer_id=fb.user_id) }}" class="text-decoration-none"> 
+                                                    <strong>{{ fb.full_name }}</strong><br>
+                                                </a>
+                                                <small class="text-muted">@{{ fb.username }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span
+                                            class="badge bg-{{ 'success' if fb.rating >= 4 else 'warning' if fb.rating >= 3 else 'danger' }} p-2">
+                                            {{ fb.rating }} ★
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="feedback-text">
+                                            "{{ fb.comments }}"
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ fb.submitted_at.strftime('%b %d, %Y') }}<br>
+                                            {{ fb.submitted_at.strftime('%I:%M %p') }}
+                                        </small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle-fill"></i>
+                        No feedback has been submitted for this event yet.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .feedback-text {
+        max-width: 300px;
+        white-space: normal;
+        word-wrap: break-word;
+    }
+
+    .badge.bg-success {
+        background-color: #2e7d32 !important;
+    }
+
+    .badge.bg-warning {
+        background-color: #ff9800 !important;
+        color: #000;
+    }
+
+    .badge.bg-danger {
+        background-color: #dc3545 !important;
+    }
+</style>
+{% endblock %}
