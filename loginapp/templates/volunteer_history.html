@@ -10,7 +10,7 @@
         <div class="col-12">
             <!-- Back Button - Conditional based on role -->
             <div class="mb-3">
-                {% if session.role == 'admin' %}
+                {% if is_admin %}
                     <a href="{{ url_for('manage_users') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-left"></i> Back to Users
                     </a>
@@ -24,7 +24,15 @@
             <!-- Volunteer Header -->
             <div class="card mb-4">
                 <div class="card-header bg-success text-white">
-                    <h4 class="mb-0">Volunteer History: {{ volunteer.full_name }}</h4>
+                    <h4 class="mb-0">
+                        {% if is_admin %}
+                            <i class="bi bi-person-badge"></i> 
+                            Volunteer History: {{ volunteer.full_name }}
+                        {% else %}
+                            <i class="bi bi-clock-history"></i> 
+                            Volunteer History: {{ volunteer.full_name }}
+                        {% endif %}
+                    </h4>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -57,13 +65,21 @@
                                     <th>Contact:</th>
                                     <td>{{ volunteer.contact_number }}</td>
                                 </tr>
+                                {% if not is_admin %}
+                                <tr>
+                                    <th>Events with You:</th>
+                                    <td>
+                                        <span class="badge bg-info">{{ stats.total_events }} events</span>
+                                    </td>
+                                </tr>
+                                {% endif %}
                             </table>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Statistics - Now coming from SQL -->
+            <!-- Statistics Cards -->
             <div class="row mb-4">
                 <div class="col-md-2">
                     <div class="card text-center">
@@ -76,8 +92,16 @@
                 <div class="col-md-2">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h5 class="text-success">{{ attendance_rate|round(1) }}%</h5>
-                            <small>Attendance Rate</small>
+                            <h5 class="text-success">{{ stats.attended_events or 0 }}</h5>
+                            <small>Attended</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="text-success">{{ stats.absent_events or 0 }}</h5>
+                            <small>Absent</small>
                         </div>
                     </div>
                 </div>
@@ -100,28 +124,64 @@
                 <div class="col-md-2">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h5 class="text-success">
-                                {% if stats.feedback_count and stats.feedback_count > 0 %}
-                                    {{ ((stats.feedback_count / stats.attended_events) * 100)|round(1) if stats.attended_events > 0 else 0 }}%
-                                {% else %}0%{% endif %}
-                            </h5>
-                            <small>Feedback Rate</small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <div class="card text-center">
-                        <div class="card-body">
                             <h5 class="text-success">{{ stats.avg_rating|round(1) or 0 }}</h5>
                             <small>Avg Rating</small>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Second Row of Stats -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="text-success">{{ stats.feedback_count or 0 }}</h5>
+                            <small>Feedbacks Given</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="text-success">{{ attendance_rate|round(1) }}%</h5>
+                            <small>Attendance Rate</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="text-success">
+                                {% if stats.attended_events and stats.attended_events > 0 %}
+                                    {{ (stats.total_bags / stats.attended_events)|round(1) }}
+                                {% else %}0{% endif %}
+                            </h5>
+                            <small>Bags per Event</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="text-success">
+                                {% if stats.total_events and stats.total_events > 0 %}
+                                    {{ ((stats.attended_events / stats.total_events) * 100)|round(1) }}%
+                                {% else %}0%{% endif %}
+                            </h5>
+                            <small>Participation Rate</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- History Table -->
             <div class="card">
                 <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Event Participation History</h5>
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-check"></i> 
+                        Event Participation History
+                    </h5>
                 </div>
                 <div class="card-body">
                     {% if history %}
@@ -133,6 +193,9 @@
                                         <th>Date</th>
                                         <th>Location</th>
                                         <th>Type</th>
+                                        {% if is_admin %}
+                                            <th>Event Leader</th>
+                                        {% endif %}
                                         <th>Status</th>
                                         <th>Bags</th>
                                         <th>Recyclables</th>
@@ -147,6 +210,13 @@
                                         <td>{{ record.event_date.strftime('%b %d, %Y') }}</td>
                                         <td>{{ record.location }}</td>
                                         <td>{{ record.event_type }}</td>
+                                        
+                                        {% if is_admin %}
+                                            <td>
+                                                {{ record.event_leader_name }}
+                                            </td>
+                                        {% endif %}
+                                        
                                         <td>
                                             {% if record.attendance == 'attended' %}
                                                 <span class="badge bg-success">Attended</span>
@@ -165,9 +235,9 @@
                                                 <div class="text-nowrap">
                                                     {% for i in range(5) %}
                                                         {% if i < record.rating %}
-                                                            <i class="bi bi-star-fill text-warning"></i>
+                                                            <i class="bi bi-star-fill text-warning small"></i>
                                                         {% else %}
-                                                            <i class="bi bi-star text-warning"></i>
+                                                            <i class="bi bi-star text-warning small"></i>
                                                         {% endif %}
                                                     {% endfor %}
                                                     <br>
@@ -196,7 +266,19 @@
                                                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                             </div>
                                                             <div class="modal-body">
-                                                                <p class="mb-0">{{ record.feedback }}</p>
+                                                                <p><strong>Rating:</strong> 
+                                                                    {% for i in range(5) %}
+                                                                        {% if i < record.rating %}
+                                                                            <i class="bi bi-star-fill text-warning"></i>
+                                                                        {% else %}
+                                                                            <i class="bi bi-star text-warning"></i>
+                                                                        {% endif %}
+                                                                    {% endfor %}
+                                                                </p>
+                                                                <p><strong>Comments:</strong></p>
+                                                                <div class="p-3 bg-light rounded">
+                                                                    "{{ record.feedback }}"
+                                                                </div>
                                                             </div>
                                                             <div class="modal-footer">
                                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -227,6 +309,11 @@
                 <button class="btn btn-outline-success" onclick="window.print()">
                     <i class="bi bi-printer"></i> Print History
                 </button>
+                {% if is_admin %}
+                <a href="{{ url_for('manage_users') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Users
+                </a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -249,6 +336,7 @@
         }
         .card {
             border: 1px solid #000 !important;
+            break-inside: avoid;
         }
         .badge {
             border: 1px solid #000 !important;
@@ -261,6 +349,11 @@
     }
     .bg-success {
         background-color: #2e7d32 !important;
+    }
+    .card {
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 </style>
 {% endblock %}

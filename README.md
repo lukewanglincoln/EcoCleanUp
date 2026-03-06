@@ -77,3 +77,4 @@ The following tools and prompts were used in the development of this project:
     - Split the events into a few parts including upcoming, completed, cancelled, and all events. Each part should be shown on their own tab. 
     - bags collected and recyclables sorted should be only shown for completed events. 
     - write a sketch of the README file containing the GenAI acknowledgement section, including the tools and prompts that I have used in the development of this project.
+    - improve my improve admin_view_volunteer_history so I can use volunteer_history.html for both event leaders and administrators.

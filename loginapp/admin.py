@@ -160,7 +160,10 @@ def admin_view_volunteer_history(volunteer_id):
     with db.get_cursor() as cursor:
         # Get volunteer details
         cursor.execute(
-            "SELECT user_id, username, full_name, email, contact_number, profile_image FROM users WHERE user_id = %s AND role = 'volunteer';",
+            """
+            SELECT user_id, username, full_name, email, contact_number, profile_image 
+            FROM users WHERE user_id = %s AND role = 'volunteer';
+            """,
             (volunteer_id,),
         )
         volunteer = cursor.fetchone()
@@ -169,15 +172,18 @@ def admin_view_volunteer_history(volunteer_id):
             flash("Volunteer not found.", "error")
             return redirect(url_for("manage_users"))
 
-        # Get volunteer's event history
+        # Get volunteer's complete event history (all events, not filtered by leader)
         cursor.execute(
             """
             SELECT e.event_name, e.event_date, e.location, e.event_type,
                    er.attendance,
-                   eo.bags_collected, eo.recyclables_sorted,
-                   f.rating, f.comments as feedback
+                   COALESCE(eo.bags_collected, 0) as bags_collected,
+                   COALESCE(eo.recyclables_sorted, 0) as recyclables_sorted,
+                   f.rating, f.comments as feedback,
+                   u.full_name as event_leader_name
             FROM event_registrations er
             JOIN events e ON er.event_id = e.event_id
+            JOIN users u ON e.event_leader_id = u.user_id
             LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
             LEFT JOIN feedback f ON er.event_id = f.event_id AND er.volunteer_id = f.volunteer_id
             WHERE er.volunteer_id = %s
@@ -187,8 +193,54 @@ def admin_view_volunteer_history(volunteer_id):
         )
         history = cursor.fetchall()
 
+        # Get statistics for this volunteer across all events
+        cursor.execute(
+            """
+            SELECT 
+                COUNT(DISTINCT e.event_id) as total_events,
+                COUNT(CASE WHEN er.attendance = 'attended' THEN 1 END) as attended_events,
+                COUNT(CASE WHEN er.attendance = 'absent' THEN 1 END) as absent_events,
+                COALESCE(SUM(eo.bags_collected), 0) as total_bags,
+                COALESCE(SUM(eo.recyclables_sorted), 0) as total_recyclables,
+                COALESCE(AVG(f.rating), 0) as avg_rating,
+                COUNT(f.feedback_id) as feedback_count
+            FROM event_registrations er
+            JOIN events e ON er.event_id = e.event_id
+            LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
+            LEFT JOIN feedback f ON er.event_id = f.event_id AND er.volunteer_id = f.volunteer_id
+            WHERE er.volunteer_id = %s;
+            """,
+            (volunteer_id,),
+        )
+        stats = cursor.fetchone()
+
+        if not stats:
+            stats = {
+                "total_events": 0,
+                "attended_events": 0,
+                "absent_events": 0,
+                "total_bags": 0,
+                "total_recyclables": 0,
+                "avg_rating": 0,
+                "feedback_count": 0,
+            }
+
+        # Calculate attendance rate (attended / (attended + absent) * 100)
+        total_attendance_events = (stats["attended_events"] or 0) + (
+            stats["absent_events"] or 0
+        )
+        if total_attendance_events > 0:
+            attendance_rate = stats["attended_events"] / total_attendance_events * 100
+        else:
+            attendance_rate = 0
+
     return render_template(
-        "admin_volunteer_history.html", volunteer=volunteer, history=history
+        "volunteer_history.html",  # Using the same template!
+        volunteer=volunteer,
+        history=history,
+        stats=stats,
+        attendance_rate=attendance_rate,
+        is_admin=True,  # Flag to indicate admin view
     )
 
 
