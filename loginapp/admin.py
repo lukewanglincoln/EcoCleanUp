@@ -19,21 +19,21 @@ def admin_home():
         cursor.execute(
             """
             SELECT 
-                (SELECT COUNT(*) FROM users WHERE person_role = 'volunteer') as total_volunteers,
-                (SELECT COUNT(*) FROM users WHERE person_role = 'event_leader') as total_event_leaders,
-                (SELECT COUNT(*) FROM users WHERE person_role = 'admin') as total_admins,
+                (SELECT COUNT(*) FROM users WHERE role = 'volunteer') as total_volunteers,
+                (SELECT COUNT(*) FROM users WHERE role = 'event_leader') as total_event_leaders,
+                (SELECT COUNT(*) FROM users WHERE role = 'admin') as total_admins,
                 (SELECT COUNT(*) FROM events) as total_events,
                 (SELECT COUNT(*) FROM events WHERE event_date >= CURRENT_DATE) as upcoming_events,
                 (SELECT COUNT(*) FROM event_registrations) as total_registrations,
                 (SELECT COUNT(*) FROM feedback) as total_feedback,
                 (SELECT COALESCE(AVG(rating), 0) FROM feedback) as avg_rating,
-                (SELECT COALESCE(SUM(bags_collected), 0) FROM event_registrations) as total_bags,
-                (SELECT COALESCE(SUM(recyclables_sorted), 0) FROM event_registrations) as total_recyclables
-        """
+                (SELECT COALESCE(SUM(bags_collected), 0) FROM event_outcomes) as total_bags,
+                (SELECT COALESCE(SUM(recyclables_sorted), 0) FROM event_outcomes) as total_recyclables
+            """
         )
         stats = cursor.fetchone()
 
-        # Get recent activity - Fixed UNION query
+        # Get recent activity
         cursor.execute(
             """
             (SELECT 'New User' as type, username as description, created_at 
@@ -44,7 +44,7 @@ def admin_home():
              FROM events 
              ORDER BY created_at DESC LIMIT 5)
             ORDER BY created_at DESC LIMIT 10;
-        """
+            """
         )
         recent_activity = cursor.fetchall()
 
@@ -59,7 +59,6 @@ def admin_home():
 @role_required("admin")
 def manage_users():
     """View and manage all users."""
-    # Get filter parameters
     search = request.args.get("search", "")
     role_filter = request.args.get("role", "")
     status_filter = request.args.get("status", "")
@@ -73,7 +72,7 @@ def manage_users():
         params.extend([search_param, search_param, search_param])
 
     if role_filter:
-        query += " AND person_role = %s"
+        query += " AND role = %s"
         params.append(role_filter)
 
     if status_filter:
@@ -103,65 +102,56 @@ def admin_manage_events():
     with db.get_cursor() as cursor:
         cursor.execute(
             """
-            SELECT e.*, z.zone_name,
-                   u.username as creator_username,
-                   u.full_name as creator_name,
+            SELECT e.*, u.username as event_leader_username, u.full_name as event_leader_name,
                    (SELECT COUNT(*) FROM event_registrations WHERE event_id = e.event_id) as volunteer_count,
-                   (SELECT COUNT(*) FROM event_registrations WHERE event_id = e.event_id AND attendance_status = 'attended') as attended_count
+                   (SELECT COUNT(*) FROM event_registrations WHERE event_id = e.event_id AND attendance = 'attended') as attended_count
             FROM events e
-            LEFT JOIN cleanup_zones z ON e.zone_id = z.zone_id
-            JOIN users u ON e.created_by = u.user_id
+            JOIN users u ON e.event_leader_id = u.user_id
             ORDER BY e.event_date DESC, e.created_at DESC;
-        """
+            """
         )
         events = cursor.fetchall()
 
     return render_template("admin_manage_events.html", events=events)
 
 
-@app.route("/admin/events/<int:event_id>/volunteers")
+@app.route("/admin/volunteers/<int:volunteer_id>/history")
 @login_required
 @role_required("admin")
-def admin_view_event_volunteers(event_id):
-    """Admin view list of volunteers registered for an event."""
+def admin_view_volunteer_history(volunteer_id):
+    """Admin view volunteer's event history."""
     with db.get_cursor() as cursor:
-        # Get event details
+        # Get volunteer details
         cursor.execute(
-            """
-            SELECT e.*, z.zone_name, u.full_name as creator_name, u.username as creator_username
-            FROM events e
-            LEFT JOIN cleanup_zones z ON e.zone_id = z.zone_id
-            JOIN users u ON e.created_by = u.user_id
-            WHERE e.event_id = %s;
-        """,
-            (event_id,),
+            "SELECT user_id, username, full_name, email, contact_number, profile_image FROM users WHERE user_id = %s AND role = 'volunteer';",
+            (volunteer_id,),
         )
-        event = cursor.fetchone()
+        volunteer = cursor.fetchone()
 
-        if not event:
-            flash("Event not found.", "error")
-            return redirect(url_for("admin_manage_events"))
+        if not volunteer:
+            flash("Volunteer not found.", "error")
+            return redirect(url_for("manage_users"))
 
-        # Get registered volunteers
+        # Get volunteer's event history
         cursor.execute(
             """
-            SELECT u.user_id, u.username, u.full_name, u.email, u.contact_number,
-                   u.profile_image,
-                   er.registration_date, er.attendance_status,
-                   er.bags_collected, er.recyclables_sorted,
+            SELECT e.event_name, e.event_date, e.location, e.event_type,
+                   er.attendance,
+                   eo.bags_collected, eo.recyclables_sorted,
                    f.rating, f.comments as feedback
             FROM event_registrations er
-            JOIN users u ON er.volunteer_id = u.user_id
+            JOIN events e ON er.event_id = e.event_id
+            LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
             LEFT JOIN feedback f ON er.event_id = f.event_id AND er.volunteer_id = f.volunteer_id
-            WHERE er.event_id = %s
-            ORDER BY er.registration_date;
-        """,
-            (event_id,),
+            WHERE er.volunteer_id = %s
+            ORDER BY e.event_date DESC;
+            """,
+            (volunteer_id,),
         )
-        volunteers = cursor.fetchall()
+        history = cursor.fetchall()
 
     return render_template(
-        "admin_event_volunteers.html", event=event, volunteers=volunteers
+        "admin_volunteer_history.html", volunteer=volunteer, history=history
     )
 
 
@@ -174,10 +164,10 @@ def admin_edit_event(event_id):
         # Update event
         event_name = request.form.get("event_name")
         location = request.form.get("location")
-        zone_id = request.form.get("zone_id")
         event_date = request.form.get("event_date")
-        event_time = request.form.get("event_time")
-        duration_hours = request.form.get("duration_hours")
+        start_time = request.form.get("start_time")
+        end_time = request.form.get("end_time")
+        duration = request.form.get("duration")
         supplies = request.form.get("supplies")
         safety_instructions = request.form.get("safety_instructions")
         status = request.form.get("status")
@@ -186,18 +176,18 @@ def admin_edit_event(event_id):
             cursor.execute(
                 """
                 UPDATE events 
-                SET event_name = %s, location = %s, zone_id = %s, event_date = %s,
-                    event_time = %s, duration_hours = %s, supplies = %s,
+                SET event_name = %s, location = %s, event_date = %s,
+                    start_time = %s, end_time = %s, duration = %s, supplies = %s,
                     safety_instructions = %s, status = %s
                 WHERE event_id = %s;
             """,
                 (
                     event_name,
                     location,
-                    zone_id or None,
                     event_date,
-                    event_time,
-                    duration_hours,
+                    start_time,
+                    end_time,
+                    duration,
                     supplies,
                     safety_instructions,
                     status,
@@ -222,45 +212,6 @@ def admin_edit_event(event_id):
         return redirect(url_for("admin_manage_events"))
 
     return render_template("admin_edit_event.html", event=event, zones=zones)
-
-
-@app.route("/admin/volunteers/<int:volunteer_id>/history")
-@login_required
-@role_required("admin")
-def admin_view_volunteer_history(volunteer_id):
-    """Admin view volunteer's event history."""
-    with db.get_cursor() as cursor:
-        # Get volunteer details
-        cursor.execute(
-            "SELECT user_id, username, full_name FROM users WHERE user_id = %s AND person_role = 'volunteer';",
-            (volunteer_id,),
-        )
-        volunteer = cursor.fetchone()
-
-        if not volunteer:
-            flash("Volunteer not found.", "error")
-            return redirect(url_for("manage_users"))
-
-        # Get volunteer's event history
-        cursor.execute(
-            """
-            SELECT e.event_name, e.event_date, e.location, z.zone_name,
-                   er.attendance_status, er.bags_collected, er.recyclables_sorted,
-                   f.rating, f.comments as feedback
-            FROM event_registrations er
-            JOIN events e ON er.event_id = e.event_id
-            LEFT JOIN cleanup_zones z ON e.zone_id = z.zone_id
-            LEFT JOIN feedback f ON er.event_id = f.event_id AND er.volunteer_id = f.volunteer_id
-            WHERE er.volunteer_id = %s
-            ORDER BY e.event_date DESC;
-        """,
-            (volunteer_id,),
-        )
-        history = cursor.fetchall()
-
-    return render_template(
-        "volunteer_history.html", volunteer=volunteer, history=history
-    )
 
 
 @app.route("/admin/events/<int:event_id>/cancel", methods=["POST"])

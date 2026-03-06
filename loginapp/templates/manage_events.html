@@ -9,18 +9,17 @@
     <div class="row">
         <div class="col-12">
             <h1 class="display-5 mb-4">Manage Events</h1>
-
+            
             <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show"
-                role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            {% endfor %}
-            {% endif %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
             {% endwith %}
 
             <div class="mb-3">
@@ -29,77 +28,210 @@
                 </a>
             </div>
 
+            <!-- Status Tabs -->
+            <ul class="nav nav-tabs mb-4">
+                <li class="nav-item">
+                    <a class="nav-link {% if filter_status == 'upcoming' %}active bg-success text-white{% endif %}" 
+                       href="{{ url_for('manage_events', status='upcoming') }}">
+                        Upcoming <span class="badge {% if filter_status == 'upcoming' %}bg-light text-success{% else %}bg-success{% endif %}">{{ counts.upcoming_count }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if filter_status == 'completed' %}active bg-success text-white{% endif %}" 
+                       href="{{ url_for('manage_events', status='completed') }}">
+                        Completed <span class="badge {% if filter_status == 'completed' %}bg-light text-success{% else %}bg-success{% endif %}">{{ counts.completed_count }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if filter_status == 'cancelled' %}active bg-success text-white{% endif %}" 
+                       href="{{ url_for('manage_events', status='cancelled') }}">
+                        Cancelled <span class="badge {% if filter_status == 'cancelled' %}bg-light text-success{% else %}bg-success{% endif %}">{{ counts.cancelled_count }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if filter_status == 'all' %}active bg-success text-white{% endif %}" 
+                       href="{{ url_for('manage_events', status='all') }}">
+                        All Events <span class="badge {% if filter_status == 'all' %}bg-light text-success{% else %}bg-success{% endif %}">{{ counts.total }}</span>
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Results Summary -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <p class="text-muted mb-0">
+                    Showing <strong>{{ events|length }}</strong> 
+                    {% if filter_status == 'upcoming' %}upcoming{% elif filter_status == 'completed' %}completed{% elif filter_status == 'cancelled' %}cancelled{% else %}all{% endif %} 
+                    events
+                </p>
+                {% if filter_status != 'upcoming' %}
+                <a href="{{ url_for('manage_events', status='upcoming') }}" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-calendar-check"></i> View Upcoming Only
+                </a>
+                {% endif %}
+            </div>
+
             {% if events %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-success">
-                        <tr>
-                            <th>Event Name</th>
-                            <th>Location</th>
-                            <th>Date</th>
-                            <th>Time</th>
-                            <th>Zone</th>
-                            <th>Volunteers</th>
-                            <th>Attended</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for event in events %}
-                        <tr>
-                            <td>{{ event.event_name }}</td>
-                            <td>{{ event.location }}</td>
-                            <td>{{ event.event_date.strftime('%b %d, %Y') }}</td>
-                            <td>{{ event.event_time.strftime('%I:%M %p') }}</td>
-                            <td>{{ event.zone_name or 'N/A' }}</td>
-                            <td>{{ event.volunteer_count or 0 }}</td>
-                            <td>{{ event.attended_count or 0 }}</td>
-                            <td>
-                                {% if event.status == 'upcoming' %}
-                                <span class="badge bg-success">Upcoming</span>
-                                {% elif event.status == 'completed' %}
-                                <span class="badge bg-secondary">Completed</span>
-                                {% elif event.status == 'cancelled' %}
-                                <span class="badge bg-danger">Cancelled</span>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-success">
+                            <tr>
+                                <th>Date</th>
+                                <th>Event Name</th>
+                                <th>Location</th>
+                                <th>Type</th>
+                                <th>Time</th>
+                                <th>Volunteers</th>
+                                {% if filter_status != 'upcoming' %}
+                                    <th>Attended</th>
+                                    <th>Bags</th>
+                                    <th>Recyclables</th>
                                 {% endif %}
-                            </td>
-                            <td>
-                                <div class="btn-group" role="group">
-                                    <a href="{{ url_for('edit_event', event_id=event.event_id) }}"
-                                        class="btn btn-sm btn-outline-primary" title="Edit">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    {% if event.volunteer_count > 0 %}
-                                        <a href="{{ url_for('view_event_volunteers', event_id=event.event_id) }}"
-                                            class="btn btn-sm btn-outline-success" title="View Volunteers">
-                                            <i class="bi bi-people"></i>
-                                        </a>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in events %}
+                                <tr class="{% if event.event_date < current_date and event.status == 'upcoming' %}table-warning{% endif %}">
+                                    <td>{{ event.event_date.strftime('%b %d, %Y') }}</td>
+                                    <td>
+                                        {{ event.event_name }}
+                                        {% if event.event_date < current_date and event.status == 'upcoming' %}
+                                            <span class="badge bg-warning text-dark ms-1" title="Past due">!</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ event.location }}</td>
+                                    <td>{{ event.event_type }}</td>
+                                    <td>{{ event.start_time.strftime('%I:%M %p') }}</td>
+                                    <td>{{ event.volunteer_count or 0 }}</td>
+                                    {% if filter_status != 'upcoming' %}
+                                        <td>{{ event.attended_count or 0 }}</td>
+                                        <td>
+                                            {% if event.bags_collected %}
+                                                <span class="badge bg-success">{{ event.bags_collected }}</span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if event.recyclables_sorted %}
+                                                <span class="badge bg-info">{{ event.recyclables_sorted }}</span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
                                     {% endif %}
-                                    {% if event.status != 'cancelled' and event.status != 'completed' %}
-                                        <form method="POST"
-                                            action="{{ url_for('event_leader_cancel_event', event_id=event.event_id) }}"
-                                            class="d-inline"
-                                            onsubmit="return confirm('Are you sure you want to cancel this event?');">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancel">
-                                                <i class="bi bi-x-circle"></i>
-                                            </button>
-                                        </form>
-                                    {% endif %}
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                                    <td>
+                                        {% if event.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif event.status == 'cancelled' %}
+                                            <span class="badge bg-danger">Cancelled</span>
+                                        {% else %}
+                                            <span class="badge bg-primary">Upcoming</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <!-- Edit button - always show -->
+                                            <a href="{{ url_for('edit_event', event_id=event.event_id) }}" 
+                                               class="btn btn-sm btn-outline-primary" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                          
+                                            <!-- View Volunteers button - only if there are volunteers -->
+                                            {% if event.volunteer_count > 0 %}
+                                                <a href="{{ url_for('view_event_volunteers', event_id=event.event_id) }}" 
+                                                   class="btn btn-sm btn-outline-success" title="View Volunteers">
+                                                    <i class="bi bi-people"></i>
+                                                </a>
+                                            {% endif %}
+                                            
+                                            <!-- Record Outcomes button - only for past events without outcomes -->
+                                            {% if event.event_date < current_date and event.status != 'cancelled' %}
+                                                <a href="{{ url_for('record_event_outcomes', event_id=event.event_id) }}" 
+                                                   class="btn btn-sm btn-outline-info" title="Record Outcomes">
+                                                    <i class="bi bi-clipboard-data"></i>
+                                                </a>
+                                            {% endif %}
+                                            
+                                            <!-- View Outcomes button - for events with recorded outcomes -->
+                                            {% if event.bags_collected %}
+                                                <a href="{{ url_for('record_event_outcomes', event_id=event.event_id) }}" 
+                                                   class="btn btn-sm btn-outline-secondary" title="View/Edit Outcomes">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            {% endif %}
+
+                                            <!-- Cancel button - only for upcoming events -->
+                                            {% if event.status == 'upcoming' %}
+                                                <form method="POST" action="{{ url_for('cancel_event', event_id=event.event_id) }}" 
+                                                      class="d-inline" onsubmit="return confirm('Are you sure you want to cancel this event?');">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancel">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             {% else %}
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle-fill"></i> You haven't created any events yet.
-                <a href="{{ url_for('create_event') }}" class="alert-link">Create your first event</a>!
-            </div>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill"></i> 
+                    {% if filter_status == 'upcoming' %}
+                        No upcoming events found. <a href="{{ url_for('create_event') }}" class="alert-link">Create your first event</a>!
+                    {% elif filter_status == 'completed' %}
+                        No completed events found.
+                    {% elif filter_status == 'cancelled' %}
+                        No cancelled events found.
+                    {% else %}
+                        You haven't created any events yet. <a href="{{ url_for('create_event') }}" class="alert-link">Create your first event</a>!
+                    {% endif %}
+                </div>
             {% endif %}
         </div>
     </div>
 </div>
+
+<!-- Add some custom styling -->
+<style>
+    .nav-tabs .nav-link {
+        color: #2e7d32;
+        font-weight: 500;
+    }
+    
+    .nav-tabs .nav-link.active {
+        background-color: #2e7d32 !important;
+        color: white !important;
+        border-color: #2e7d32;
+    }
+    
+    .nav-tabs .nav-link:hover:not(.active) {
+        background-color: #e8f5e9;
+        border-color: #c8e6c9;
+    }
+    
+    .badge.bg-success {
+        background-color: #2e7d32 !important;
+    }
+    
+    .badge.bg-primary {
+        background-color: #1976d2 !important;
+    }
+    
+    .table-warning {
+        background-color: #fff3e0;
+    }
+    
+    .btn-group .btn {
+        margin-right: 2px;
+    }
+    
+    .btn-group .btn:last-child {
+        margin-right: 0;
+    }
+</style>
 {% endblock %}

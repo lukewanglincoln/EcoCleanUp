@@ -9,7 +9,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <h1 class="display-5 mb-4">Browse Cleanup Events</h1>
-
+            
             <!-- Filter Form -->
             <div class="card mb-4">
                 <div class="card-header bg-success text-white">
@@ -26,18 +26,16 @@
                             <select class="form-select" id="location" name="location">
                                 <option value="">All Locations</option>
                                 {% for loc in locations %}
-                                <option value="{{ loc.location }}" {% if filter_location==loc.location %}selected{%
-                                    endif %}>{{ loc.location }}</option>
+                                <option value="{{ loc.location }}" {% if filter_location == loc.location %}selected{% endif %}>{{ loc.location }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label for="type" class="form-label">Zone Type</label>
+                            <label for="type" class="form-label">Event Type</label>
                             <select class="form-select" id="type" name="type">
                                 <option value="">All Types</option>
-                                {% for zone in zone_types %}
-                                <option value="{{ zone.zone_name }}" {% if filter_type==zone.zone_name %}selected{%
-                                    endif %}>{{ zone.zone_name }}</option>
+                                {% for type in event_types %}
+                                <option value="{{ type.event_type }}" {% if filter_type == type.event_type %}selected{% endif %}>{{ type.event_type }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -51,85 +49,81 @@
 
             <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show"
-                role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            {% endfor %}
-            {% endif %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
             {% endwith %}
 
             <!-- Events List -->
             <div class="row">
                 {% if events %}
-                {% for event in events %}
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100 {% if event.is_registered %}border-success{% endif %}">
-                        <div class="card-header {% if event.is_registered %}bg-success text-white{% endif %}">
-                            <h5 class="card-title mb-0">{{ event.event_name }}</h5>
-                        </div>
-                        <div class="card-body">
-                            <p class="card-text">
-                                <i class="bi bi-geo-alt-fill text-success"></i> {{ event.location }}<br>
-                                <i class="bi bi-calendar-fill text-success"></i> {{ event.event_date.strftime('%B %d,
-                                %Y') }}<br>
-                                <i class="bi bi-clock-fill text-success"></i> {{ event.event_time.strftime('%I:%M %p')
-                                }} ({{ event.duration_hours }} hours)<br>
-                                <i class="bi bi-people-fill text-success"></i> {{ event.volunteer_count }} volunteers
-                                registered
-                            </p>
-
-                            {% if event.zone_name %}
-                            <span class="badge bg-info mb-2">{{ event.zone_name }}</span>
-                            {% endif %}
-
-                            <div class="mt-3">
-                                <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#details-{{ event.event_id }}">
-                                    View Details
-                                </button>
-
-                                {% if session.role == 'volunteer' %}
-                                    {% if event.is_registered %}
-                                        <span class="badge bg-success p-2 ms-2">You're registered!</span>
-                                        <form method="POST" action="{{ url_for('cancel_registration', event_id=event.event_id) }}" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger ms-2" onclick="return confirm('Are you sure you want to cancel your registration?')">Cancel</button>
-                                        </form>
-                                    {% else %}
-                                        <form method="POST" action="{{ url_for('register_for_event', event_id=event.event_id) }}" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-success ms-2">Register</button>
-                                        </form>
-                                    {% endif %}
-                                {% elif session.role == 'event_leader' or session.role == 'admin' %}
-                                    <a href="{{ url_for('view_event_volunteers', event_id=event.event_id) }}" class="btn btn-sm btn-outline-info">
-                                        <i class="bi bi-people"></i> View Volunteers
-                                    </a>
-                                {% endif %}
-
+                    {% for event in events %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 {% if event.is_registered %}border-success{% endif %}">
+                            <div class="card-header {% if event.is_registered %}bg-success text-white{% endif %}">
+                                <h5 class="card-title mb-0">{{ event.event_name }}</h5>
                             </div>
-
-                            <div class="collapse mt-3" id="details-{{ event.event_id }}">
-                                <div class="card card-body bg-light">
-                                    <h6>Supplies Provided:</h6>
-                                    <p>{{ event.supplies or 'No supplies specified' }}</p>
-
-                                    <h6>Safety Instructions:</h6>
-                                    <p>{{ event.safety_instructions or 'No safety instructions provided' }}</p>
+                            <div class="card-body">
+                                <p class="card-text">
+                                    <i class="bi bi-geo-alt-fill text-success"></i> {{ event.location }}<br>
+                                    <i class="bi bi-tag-fill text-success"></i> {{ event.event_type }}<br>
+                                    <i class="bi bi-calendar-fill text-success"></i> {{ event.event_date.strftime('%B %d, %Y') }}<br>
+                                    <i class="bi bi-clock-fill text-success"></i> {{ event.start_time.strftime('%I:%M %p') }} to {{ event.end_time.strftime('%I:%M %p') }} ({{ event.duration }} hours)<br>
+                                    <i class="bi bi-people-fill text-success"></i> {{ event.volunteer_count }} volunteers registered
+                                </p>
+                                
+                                <div class="mt-3">
+                                    <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#details-{{ event.event_id }}">
+                                        View Details
+                                    </button>
+                                    
+                                    {% if session.role == 'volunteer' %}
+                                        {% if event.is_registered %}
+                                            <span class="badge bg-success p-2 ms-2">You're registered!</span>
+                                            <form method="POST" action="{{ url_for('cancel_registration', event_id=event.event_id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger ms-2" onclick="return confirm('Are you sure you want to cancel your registration?')">Cancel</button>
+                                            </form>
+                                        {% else %}
+                                            <form method="POST" action="{{ url_for('register_for_event', event_id=event.event_id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-success ms-2">Register</button>
+                                            </form>
+                                        {% endif %}
+                                    {% elif session.role == 'event_leader' or session.role == 'admin' %}
+                                        <a href="{{ url_for('view_event_volunteers', event_id=event.event_id) if session.role == 'event_leader' else url_for('admin_view_event_volunteers', event_id=event.event_id) }}" class="btn btn-sm btn-outline-info ms-2">
+                                            <i class="bi bi-people"></i> View Volunteers
+                                        </a>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="collapse mt-3" id="details-{{ event.event_id }}">
+                                    <div class="card card-body bg-light">
+                                        {% if event.description %}
+                                        <h6>Description:</h6>
+                                        <p>{{ event.description }}</p>
+                                        {% endif %}
+                                        
+                                        <h6>Supplies Provided:</h6>
+                                        <p>{{ event.supplies or 'No supplies specified' }}</p>
+                                        
+                                        <h6>Safety Instructions:</h6>
+                                        <p>{{ event.safety_instructions or 'No safety instructions provided' }}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                {% endfor %}
+                    {% endfor %}
                 {% else %}
-                <div class="col-12">
-                    <div class="alert alert-info">
-                        No upcoming events found matching your criteria.
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            No upcoming events found matching your criteria.
+                        </div>
                     </div>
-                </div>
                 {% endif %}
             </div>
         </div>

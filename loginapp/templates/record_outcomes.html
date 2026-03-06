@@ -1,0 +1,244 @@
+{% extends 'userbase.html' %}
+
+{% block title %}Record Event Outcomes - EcoCleanUp{% endblock %}
+
+{% set active_page = 'home' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-clipboard-data"></i> 
+                        Record Event Outcomes
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Event Summary -->
+                    <div class="alert alert-info mb-4">
+                        <h5 class="alert-heading">{{ event.event_name }}</h5>
+                        <p class="mb-0">
+                            <i class="bi bi-calendar"></i> {{ event.event_date.strftime('%B %d, %Y') }}<br>
+                            <i class="bi bi-clock"></i> {{ event.start_time.strftime('%I:%M %p') }} to {{ event.end_time.strftime('%I:%M %p') }}<br>
+                            <i class="bi bi-geo-alt"></i> {{ event.location }}<br>
+                            <i class="bi bi-tag"></i> {{ event.event_type }}
+                        </p>
+                    </div>
+
+                    <!-- Attendance Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card text-center bg-light">
+                                <div class="card-body">
+                                    <h3 class="text-success">{{ event.total_registered or 0 }}</h3>
+                                    <p class="text-muted mb-0">Total Registered</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card text-center bg-light">
+                                <div class="card-body">
+                                    <h3 class="text-success">{{ event.attended_count or 0 }}</h3>
+                                    <p class="text-muted mb-0">Volunteers Attended</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <!-- Outcomes Form -->
+                    <form method="POST" action="{{ url_for('record_event_outcomes', event_id=event.event_id) }}">
+                        <!-- Bags Collected -->
+                        <div class="mb-4">
+                            <label for="bags_collected" class="form-label fw-bold">
+                                <i class="bi bi-trash3-fill text-success"></i> 
+                                Total Bags Collected *
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">#</span>
+                                <input type="number" 
+                                       class="form-control form-control-lg" 
+                                       id="bags_collected" 
+                                       name="bags_collected" 
+                                       value="{{ outcomes.bags_collected if outcomes else 0 }}"
+                                       min="0"
+                                       step="1"
+                                       required>
+                                <span class="input-group-text">bags</span>
+                            </div>
+                            <div class="form-text">Total number of rubbish bags collected during the event.</div>
+                        </div>
+
+                        <!-- Recyclables Sorted -->
+                        <div class="mb-4">
+                            <label for="recyclables_sorted" class="form-label fw-bold">
+                                <i class="bi bi-arrow-repeat text-success"></i> 
+                                Recyclables Sorted *
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">#</span>
+                                <input type="number" 
+                                       class="form-control form-control-lg" 
+                                       id="recyclables_sorted" 
+                                       name="recyclables_sorted" 
+                                       value="{{ outcomes.recyclables_sorted if outcomes else 0 }}"
+                                       min="0"
+                                       step="1"
+                                       required>
+                                <span class="input-group-text">bags</span>
+                            </div>
+                            <div class="form-text">Number of bags of recyclable materials sorted separately.</div>
+                        </div>
+
+                        <!-- Other Achievements -->
+                        <div class="mb-4">
+                            <label for="other_achievements" class="form-label fw-bold">
+                                <i class="bi bi-trophy-fill text-success"></i> 
+                                Other Achievements
+                            </label>
+                            <textarea class="form-control" 
+                                      id="other_achievements" 
+                                      name="other_achievements" 
+                                      rows="4"
+                                      placeholder="e.g., Removed 2 shopping carts from beach, cleared 2km of walking trails, planted 50 native trees...">{{ outcomes.other_achievements if outcomes else '' }}</textarea>
+                            <div class="form-text">Any additional accomplishments or notable outcomes from the event.</div>
+                        </div>
+
+                        <!-- Impact Preview -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <h6 class="card-title">Environmental Impact Summary</h6>
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <div class="p-2">
+                                            <h5 class="text-success mb-0" id="preview_bags">0</h5>
+                                            <small>Bags</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="p-2">
+                                            <h5 class="text-success mb-0" id="preview_recyclables">0</h5>
+                                            <small>Recycled</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="p-2">
+                                            <h5 class="text-success mb-0">{{ event.attended_count or 0 }}</h5>
+                                            <small>Volunteers</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="bi bi-info-circle-fill"></i>
+                            <strong>Note:</strong> These totals represent the overall impact of the entire event. 
+                            Make sure you've marked attendance for all volunteers before recording final outcomes.
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-save"></i> 
+                                {% if outcomes %}Update{% else %}Save{% endif %} Outcomes
+                            </button>
+                            <a href="{{ url_for('view_event_volunteers', event_id=event.event_id) }}" 
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Volunteers
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Live Preview Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const bagsInput = document.getElementById('bags_collected');
+        const recyclablesInput = document.getElementById('recyclables_sorted');
+        const previewBags = document.getElementById('preview_bags');
+        const previewRecyclables = document.getElementById('preview_recyclables');
+
+        function updatePreview() {
+            previewBags.textContent = bagsInput.value || 0;
+            previewRecyclables.textContent = recyclablesInput.value || 0;
+        }
+
+        bagsInput.addEventListener('input', updatePreview);
+        recyclablesInput.addEventListener('input', updatePreview);
+        
+        // Initial update
+        updatePreview();
+    });
+</script>
+
+<style>
+    .form-control-lg {
+        font-size: 1.25rem;
+        padding: 0.75rem 1rem;
+    }
+    
+    .card {
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .card-header {
+        border-radius: 15px 15px 0 0 !important;
+        padding: 1.25rem;
+    }
+    
+    .bg-success {
+        background-color: #2e7d32 !important;
+    }
+    
+    .btn-success {
+        background-color: #2e7d32;
+        border-color: #2e7d32;
+    }
+    
+    .btn-success:hover {
+        background-color: #1b5e20;
+        border-color: #1b5e20;
+    }
+    
+    .text-success {
+        color: #2e7d32 !important;
+    }
+    
+    .input-group-text {
+        background-color: #e8f5e9;
+        border-color: #c8e6c9;
+        color: #2e7d32;
+    }
+    
+    .alert-info {
+        background-color: #e3f2fd;
+        border-color: #90caf9;
+        color: #0d47a1;
+    }
+    
+    .alert-warning {
+        background-color: #fff3e0;
+        border-color: #ffb74d;
+        color: #bf360c;
+    }
+</style>
+{% endblock %}

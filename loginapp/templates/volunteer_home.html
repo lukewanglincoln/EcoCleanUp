@@ -25,7 +25,7 @@
                         <strong>{{ notification.event_name }}</strong><br>
                         {{ notification.message }}<br>
                         <small>{{ notification.event_date.strftime('%B %d, %Y') }} at {{
-                            notification.event_time.strftime('%I:%M %p') }}</small>
+                            notification.start_time.strftime('%I:%M %p') }}</small>
                     </div>
                     {% endfor %}
                 </div>
@@ -88,7 +88,7 @@
                         <div class="list-group-item">
                             <h6 class="mb-1">{{ event.event_name }}</h6>
                             <p class="mb-1">{{ event.location }}</p>
-                            <small>{{ event.event_date.strftime('%B %d, %Y') }} at {{ event.event_time.strftime('%I:%M %p') }}</small>
+                            <small>{{ event.event_date.strftime('%B %d, %Y') }} at {{ event.start_time.strftime('%I:%M %p') }}</small>
                         </div>
                         {% endfor %}
                     </div>

@@ -15,13 +15,13 @@
                 <div class="card-body">
                     <!-- Flash Messages -->
                     {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category if category != 'error' else 'danger' }}" role="alert">
-                        {{ message }}
-                    </div>
-                    {% endfor %}
-                    {% endif %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category if category != 'error' else 'danger' }}" role="alert">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
                     {% endwith %}
 
                     <form method="POST" action="{{ url_for('create_event') }}">
@@ -36,43 +36,61 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="zone_id" class="form-label">Cleanup Zone</label>
-                            <select class="form-select" id="zone_id" name="zone_id">
-                                <option value="">-- Select Zone --</option>
-                                {% for zone in zones %}
-                                <option value="{{ zone.zone_id }}">{{ zone.zone_name }}</option>
-                                {% endfor %}
+                            <label for="event_type" class="form-label">Event Type *</label>
+                            <select class="form-select" id="event_type" name="event_type" required>
+                                <option value="">-- Select Type --</option>
+                                <option value="Beach Cleanup">Beach Cleanup</option>
+                                <option value="River Cleanup">River Cleanup</option>
+                                <option value="Lake Cleanup">Lake Cleanup</option>
+                                <option value="Park Cleanup">Park Cleanup</option>
+                                <option value="Tree Planting">Tree Planting</option>
+                                <option value="Weed Control">Weed Control</option>
+                                <option value="Trail Maintenance">Trail Maintenance</option>
+                                <option value="Educational">Educational</option>
+                                <option value="Habitat Restoration">Habitat Restoration</option>
+                                <option value="Water Testing">Water Testing</option>
+                                <option value="Waste Audit">Waste Audit</option>
+                                <option value="Pest Control">Pest Control</option>
                             </select>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="event_date" class="form-label">Event Date *</label>
-                                <input type="date" class="form-control" id="event_date" name="event_date"
-                                    min="{{ current_date }}" required>
+                                <input type="date" class="form-control" id="event_date" name="event_date" 
+                                       min="{{ current_date.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="start_time" class="form-label">Start Time *</label>
+                                <input type="time" class="form-control" id="start_time" name="start_time" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="event_time" class="form-label">Event Time *</label>
-                                <input type="time" class="form-control" id="event_time" name="event_time" required>
+                                <label for="end_time" class="form-label">End Time *</label>
+                                <input type="time" class="form-control" id="end_time" name="end_time" required>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label for="duration_hours" class="form-label">Duration (hours) *</label>
-                            <input type="number" step="0.5" min="0.5" max="12" class="form-control" id="duration_hours"
-                                name="duration_hours" required>
+                            <label for="duration" class="form-label">Duration (hours) *</label>
+                            <input type="number" step="0.5" min="0.5" max="12" class="form-control" id="duration" name="duration" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" placeholder="Describe the event..."></textarea>
                         </div>
 
                         <div class="mb-3">
                             <label for="supplies" class="form-label">Supplies Provided</label>
-                            <textarea class="form-control" id="supplies" name="supplies" rows="3"
-                                placeholder="List any supplies that will be provided..."></textarea>
+                            <textarea class="form-control" id="supplies" name="supplies" rows="3" placeholder="List any supplies that will be provided..."></textarea>
                         </div>
 
                         <div class="mb-3">
                             <label for="safety_instructions" class="form-label">Safety Instructions</label>
-                            <textarea class="form-control" id="safety_instructions" name="safety_instructions" rows="3"
-                                placeholder="Provide safety instructions for volunteers..."></textarea>
+                            <textarea class="form-control" id="safety_instructions" name="safety_instructions" rows="3" placeholder="Provide safety instructions for volunteers..."></textarea>
                         </div>
 
                         <div class="d-grid gap-2">

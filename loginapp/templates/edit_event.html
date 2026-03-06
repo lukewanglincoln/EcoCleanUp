@@ -38,16 +38,9 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="zone_id" class="form-label">Cleanup Zone</label>
-                            <select class="form-select" id="zone_id" name="zone_id">
-                                <option value="">-- Select Zone --</option>
-                                {% for zone in zones %}
-                                <option value="{{ zone.zone_id }}" {% if event.zone_id==zone.zone_id %}selected{% endif
-                                    %}>
-                                    {{ zone.zone_name }}
-                                </option>
-                                {% endfor %}
-                            </select>
+                            <label for="event_type" class="form-label">Event Type *</label>
+                            <input type="text" class="form-control" id="event_type" name="event_type"
+                                value="{{ event.event_type }}" required>
                         </div>
 
                         <div class="row">
@@ -58,18 +51,22 @@
                                     min="{{ current_date.strftime('%Y-%m-%d') }}" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="event_time" class="form-label">Event Time *</label>
-                                <input type="time" class="form-control" id="event_time" name="event_time"
-                                    value="{{ event.event_time.strftime('%H:%M') }}" required>
+                                <label for="start_time" class="form-label">Start Time *</label>
+                                <input type="time" class="form-control" id="start_time" name="start_time"
+                                    value="{{ event.start_time.strftime('%H:%M') }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="end_time" class="form-label">End Time *</label>
+                                <input type="time" class="form-control" id="end_time" name="end_time"
+                                    value="{{ event.end_time.strftime('%H:%M') }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="duration" class="form-label">Durations (hours) *</label>
+                                <input type="number" step="0.5" min="0.5" max="12" class="form-control"
+                                    id="duration" name="duration" value="{{ event.duration }}"
+                                    required>
                             </div>
                         </div>
-
-                        <div class="mb-3">
-                            <label for="duration_hours" class="form-label">Duration (hours) *</label>
-                            <input type="number" step="0.5" min="0.5" max="12" class="form-control" id="duration_hours"
-                                name="duration_hours" value="{{ event.duration_hours }}" required>
-                        </div>
-
                         <div class="mb-3">
                             <label for="status" class="form-label">Event Status</label>
                             <select class="form-select" id="status" name="status">

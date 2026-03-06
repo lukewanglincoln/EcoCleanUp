@@ -9,53 +9,62 @@
     <div class="row">
         <div class="col-12">
             <h1 class="display-5 mb-4">My Participation History</h1>
-
+            
             <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show"
-                role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            {% endfor %}
-            {% endif %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
             {% endwith %}
 
             <!-- Stats Summary -->
+            {% set attended_events = history|selectattr('attendance', 'equalto', 'attended')|list|length %}
+            {% set total_bags = history|sum(attribute='bags_collected') %}
+            {% set total_recyclables = history|sum(attribute='recyclables_sorted') %}
+            {% set avg_rating = (history|selectattr('rating', 'ne', None)|list|sum(attribute='rating') / (history|selectattr('rating', 'ne', None)|list|length or 1))|round(1) %}
+            
             <div class="row mb-4">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h3 class="text-success">{{ history|selectattr('attendance_status', 'equalto',
-                                'attended')|list|length }}</h3>
+                            <h3 class="text-success">{{ history|length }}</h3>
+                            <p class="text-muted mb-0">Total Events</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="text-success">{{ attended_events }}</h3>
                             <p class="text-muted mb-0">Events Attended</p>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h3 class="text-success">{{ history|sum(attribute='bags_collected') }}</h3>
+                            <h3 class="text-success">{{ total_bags }}</h3>
                             <p class="text-muted mb-0">Bags Collected</p>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h3 class="text-success">{{ history|sum(attribute='recyclables_sorted') }}</h3>
+                            <h3 class="text-success">{{ total_recyclables }}</h3>
                             <p class="text-muted mb-0">Recyclables Sorted</p>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h3 class="text-success">{{ (history|selectattr('rating', 'ne',
-                                None)|list|sum(attribute='rating') / (history|selectattr('rating', 'ne',
-                                None)|list|length or 1))|round(1) }}</h3>
+                            <h3 class="text-success">{{ avg_rating }}</h3>
                             <p class="text-muted mb-0">Avg Rating</p>
                         </div>
                     </div>
@@ -64,68 +73,69 @@
 
             <!-- History Table -->
             {% if history %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-success">
-                        <tr>
-                            <th>Event</th>
-                            <th>Date</th>
-                            <th>Location</th>
-                            <th>Status</th>
-                            <th>Bags</th>
-                            <th>Recyclables</th>
-                            <th>Rating</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for record in history %}
-                        <tr>
-                            <td>{{ record.event_name }}</td>
-                            <td>{{ record.event_date.strftime('%b %d, %Y') }}</td>
-                            <td>{{ record.location }}</td>
-                            <td>
-                                {% if record.attendance_status == 'attended' %}
-                                    <span class="badge bg-success">Attended</span>
-                                {% elif record.attendance_status == 'registered' %}
-                                    <span class="badge bg-warning">Registered</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">{{ record.attendance_status }}</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ record.bags_collected or 0 }}</td>
-                            <td>{{ record.recyclables_sorted or 0 }}</td>
-                            <td>
-                                {% if record.rating %}
-                                    {% for i in range(5) %}
-                                        {% if i < record.rating %} 
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                        {% else %}
-                                            <i class="bi bi-star text-warning"></i>
-                                        {% endif %}
-                                    {% endfor %}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if record.attendance_status == 'attended' and not record.has_feedback %}
-                                <a href="{{ url_for('submit_feedback', event_id=record.event_id) }}"
-                                    class="btn btn-sm btn-outline-success">Add Feedback</a>
-                                {% elif record.has_feedback %}
-                                    <span class="badge bg-info">Feedback Submitted</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-success">
+                            <tr>
+                                <th>Event</th>
+                                <th>Date</th>
+                                <th>Location</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Bags</th>
+                                <th>Recyclables</th>
+                                <th>Rating</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in history %}
+                            <tr>
+                                <td>{{ record.event_name }}</td>
+                                <td>{{ record.event_date.strftime('%b %d, %Y') }}</td>
+                                <td>{{ record.location }}</td>
+                                <td>{{ record.event_type }}</td>
+                                <td>
+                                    {% if record.attendance == 'attended' %}
+                                        <span class="badge bg-success">Attended</span>
+                                    {% elif record.attendance == 'registered' %}
+                                        <span class="badge bg-warning">Registered</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ record.attendance }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ record.bags_collected or 0 }}</td>
+                                <td>{{ record.recyclables_sorted or 0 }}</td>
+                                <td>
+                                    {% if record.rating %}
+                                        {% for i in range(5) %}
+                                            {% if i < record.rating %}
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                            {% else %}
+                                                <i class="bi bi-star text-warning"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if record.attendance == 'attended' and not record.has_feedback %}
+                                        <a href="{{ url_for('submit_feedback', event_id=record.event_id) }}" class="btn btn-sm btn-outline-success">Add Feedback</a>
+                                    {% elif record.has_feedback %}
+                                        <span class="badge bg-info">Feedback Submitted</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             {% else %}
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle-fill"></i> You haven't participated in any events yet.
-                <a href="{{ url_for('browse_events') }}" class="alert-link">Browse events</a> to get started!
-            </div>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill"></i> You haven't participated in any events yet. 
+                    <a href="{{ url_for('browse_events') }}" class="alert-link">Browse events</a> to get started!
+                </div>
             {% endif %}
         </div>
     </div>

@@ -68,7 +68,7 @@ def login():
         with db.get_cursor() as cursor:
             cursor.execute(
                 """
-                SELECT user_id, username, password_hash, person_role, status 
+                SELECT user_id, username, password_hash, role, status 
                 FROM users WHERE username = %s;
             """,
                 (username,),
@@ -91,7 +91,7 @@ def login():
                     session["loggedin"] = True
                     session["user_id"] = account["user_id"]
                     session["username"] = account["username"]
-                    session["role"] = account["person_role"]
+                    session["role"] = account["role"]
 
                     # Check for unread notifications
                     cursor.execute(
@@ -222,7 +222,7 @@ def signup():
             cursor.execute(
                 """
                 INSERT INTO users 
-                (username, password_hash, email, person_role, full_name, 
+                (username, password_hash, email, role, full_name, 
                  home_address, contact_number, environmental_interests, profile_image)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);
             """,
@@ -336,7 +336,7 @@ def profile():
     with db.get_cursor() as cursor:
         cursor.execute(
             """
-            SELECT username, email, person_role, full_name, home_address, 
+            SELECT username, email, role, full_name, home_address, 
                    contact_number, environmental_interests, profile_image
             FROM users WHERE user_id = %s;
         """,

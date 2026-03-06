@@ -10,22 +10,22 @@
         <div class="col-12">
             <h1 class="display-5 mb-2">{{ event.event_name }}</h1>
             <p class="text-muted mb-4">
-                <i class="bi bi-calendar"></i> {{ event.event_date.strftime('%B %d, %Y') }} at {{
-                event.event_time.strftime('%I:%M %p') }}<br>
-                <i class="bi bi-geo-alt"></i> {{ event.location }}
+                <i class="bi bi-calendar"></i> {{ event.event_date.strftime('%B %d, %Y') }}<br>
+                <i class="bi bi-clock"></i> {{ event.start_time.strftime('%I:%M %p') }} to {{ event.end_time.strftime('%I:%M %p') }}<br>
+                <i class="bi bi-geo-alt"></i> {{ event.location }}<br>
+                <i class="bi bi-tag"></i> {{ event.event_type }}
             </p>
 
             <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            {% for category, message in messages %}
-            <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show"
-                role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            {% endfor %}
-            {% endif %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
             {% endwith %}
 
             <!-- Action Buttons -->
@@ -33,6 +33,14 @@
                 <a href="{{ url_for('manage_events') }}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> Back to Events
                 </a>
+                
+                {% if event.event_date < current_date %}
+                <a href="{{ url_for('record_event_outcomes', event_id=event.event_id) }}" 
+                class="btn btn-success">
+                    <i class="bi bi-clipboard-data"></i> Record Event Outcomes
+                </a>
+                {% endif %}
+                
                 {% if event.event_date >= current_date %}
                 <form method="POST" action="{{ url_for('send_event_reminder', event_id=event.event_id) }}"
                     class="d-inline">
@@ -52,10 +60,8 @@
                         <tr>
                             <th>Name</th>
                             <th>Contact</th>
-                            <th>Registration Date</th>
+                            <th>Registered On</th>
                             <th>Status</th>
-                            <th>Bags</th>
-                            <th>Recyclables</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -63,10 +69,21 @@
                         {% for volunteer in volunteers %}
                         <tr>
                             <td>
-                                <a href="{{ url_for('event_leader_view_volunteer_history', volunteer_id=volunteer.user_id) }}" 
-                                   class="text-decoration-none">
-                                    {{ volunteer.full_name }}
-                                </a>
+                                <div class="d-flex align-items-center">
+                                    {% if volunteer.profile_image and volunteer.profile_image != 'default_profile.jpg' %}
+                                        <img src="{{ url_for('static', filename='uploads/' + volunteer.profile_image) }}" 
+                                            class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;">
+                                    {% else %}
+                                        <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2" 
+                                            style="width: 30px; height: 30px; font-size: 1rem;">
+                                            {{ volunteer.full_name[0] }}
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <strong>{{ volunteer.full_name }}</strong><br>
+                                        <small class="text-muted">@{{ volunteer.username }}</small>
+                                    </div>
+                                </div>
                             </td>
                             <td>
                                 {{ volunteer.email }}<br>
@@ -74,57 +91,29 @@
                             </td>
                             <td>{{ volunteer.registration_date.strftime('%b %d, %Y') }}</td>
                             <td>
-                                <form method="POST" action="{{ url_for('track_attendance', event_id=event.event_id) }}"
-                                    class="d-inline">
+                                <form method="POST" action="{{ url_for('track_attendance', event_id=event.event_id) }}" class="d-inline">
                                     <input type="hidden" name="volunteer_id" value="{{ volunteer.user_id }}">
-                                    <input type="hidden" name="bags_collected" value="{{ volunteer.bags_collected or 0 }}">
-                                    <input type="hidden" name="recyclables_sorted" value="{{ volunteer.recyclables_sorted or 0 }}">
-                                    <select name="attendance_status" class="form-select form-select-sm"
-                                        onchange="this.form.submit()">
-                                        <option value="registered" {% if volunteer.attendance_status=='registered'
-                                            %}selected{% endif %}>Registered</option>
-                                        <option value="attended" {% if volunteer.attendance_status=='attended'
-                                            %}selected{% endif %}>Attended</option>
-                                        <option value="absent" {% if volunteer.attendance_status=='absent' %}selected{%
-                                            endif %}>Absent</option>
+                                    <select name="attendance_status" class="form-select form-select-sm" style="width: 120px;" onchange="this.form.submit()">
+                                        <option value="registered" {% if volunteer.attendance == 'registered' %}selected{% endif %}>Registered</option>
+                                        <option value="attended" {% if volunteer.attendance == 'attended' %}selected{% endif %}>Attended</option>
+                                        <option value="absent" {% if volunteer.attendance == 'absent' %}selected{% endif %}>Absent</option>
                                     </select>
                                 </form>
                             </td>
                             <td>
-                                <form method="POST" action="{{ url_for('track_attendance', event_id=event.event_id) }}" 
-                                      class="d-inline">
-                                    <input type="hidden" name="volunteer_id" value="{{ volunteer.user_id }}">
-                                    <input type="hidden" name="attendance_status" value="{{ volunteer.attendance_status }}">
-                                    <input type="hidden" name="recyclables_sorted" value="{{ volunteer.recyclables_sorted or 0 }}">
-                                    <input type="number" name="bags_collected" 
-                                           class="form-control form-control-sm" 
-                                           style="width: 70px;"
-                                           value="{{ volunteer.bags_collected or 0 }}" 
-                                           onchange="this.form.submit()">
-                                </form>
-                            </td>
-                            <td>
-                                <form method="POST" action="{{ url_for('track_attendance', event_id=event.event_id) }}" 
-                                      class="d-inline">
-                                    <input type="hidden" name="volunteer_id" value="{{ volunteer.user_id }}">
-                                    <input type="hidden" name="attendance_status" value="{{ volunteer.attendance_status }}">
-                                    <input type="hidden" name="bags_collected" value="{{ volunteer.bags_collected or 0 }}">
-                                    <input type="number" name="recyclables_sorted" 
-                                           class="form-control form-control-sm" 
-                                           style="width: 70px;"
-                                           value="{{ volunteer.recyclables_sorted or 0 }}" 
-                                           onchange="this.form.submit()">
-                                </form>
-                            </td>
-                            <td>
-                                <form method="POST"
-                                    action="{{ url_for('remove_volunteer', event_id=event.event_id, volunteer_id=volunteer.user_id) }}"
-                                    class="d-inline">
-                                    <button type="submit" class="btn btn-sm btn-danger"
-                                        onclick="return confirm('Remove this volunteer from the event?')">
-                                        <i class="bi bi-person-x"></i>
-                                    </button>
-                                </form>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('event_leader_view_volunteer_history', volunteer_id=volunteer.user_id) }}" 
+                                    class="btn btn-sm btn-outline-info" title="View History">
+                                        <i class="bi bi-clock-history"></i>
+                                    </a>
+                                    <form method="POST" action="{{ url_for('remove_volunteer', event_id=event.event_id, volunteer_id=volunteer.user_id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                onclick="return confirm('Remove this volunteer from the event?')"
+                                                title="Remove">
+                                            <i class="bi bi-person-x"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -136,6 +125,67 @@
                 <i class="bi bi-info-circle-fill"></i> No volunteers have registered for this event yet.
             </div>
             {% endif %}
+
+            <!-- Event Outcomes Summary -->
+            {% if event.bags_collected is not none %}
+                <div class="card mt-4 border-success">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-bar-chart"></i> Event Impact Summary
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 col-6 text-center mb-3">
+                                <div class="p-3 bg-light rounded">
+                                    <h3 class="text-success mb-0">{{ event.number_attendees or 0 }}</h3>
+                                    <small class="text-muted">Volunteers Attended</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6 text-center mb-3">
+                                <div class="p-3 bg-light rounded">
+                                    <h3 class="text-success mb-0">{{ event.bags_collected or 0 }}</h3>
+                                    <small class="text-muted">Bags Collected</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6 text-center mb-3">
+                                <div class="p-3 bg-light rounded">
+                                    <h3 class="text-success mb-0">{{ event.recyclables_sorted or 0 }}</h3>
+                                    <small class="text-muted">Recyclables Sorted</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-6 text-center mb-3">
+                                <div class="p-3 bg-light rounded">
+                                    <h3 class="text-success mb-0">
+                                        {% if event.bags_collected and event.number_attendees %}
+                                            {{ (event.bags_collected / event.number_attendees)|round(1) }}
+                                        {% else %}0{% endif %}
+                                    </h3>
+                                    <small class="text-muted">Bags per Volunteer</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if event.other_achievements %}
+                        <div class="alert alert-success mt-3 mb-0">
+                            <i class="bi bi-trophy-fill"></i> 
+                            <strong>Other Achievements:</strong> {{ event.other_achievements }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-info mt-4">
+                    <i class="bi bi-info-circle-fill"></i> 
+                    Outcomes haven't been recorded for this event yet.
+                    {% if event.event_date < current_date %}
+                    <a href="{{ url_for('record_event_outcomes', event_id=event.event_id) }}" class="alert-link">
+                        Record outcomes now
+                    </a>.
+                    {% endif %}
+                </div>
+            {% endif %}
+
         </div>
     </div>
 </div>

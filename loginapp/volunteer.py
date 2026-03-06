@@ -26,7 +26,7 @@ def volunteer_home():
         # Get notifications
         cursor.execute(
             """
-            SELECT n.*, e.event_name, e.event_date, e.event_time, e.location
+            SELECT n.*, e.event_name, e.event_date, e.start_time, e.end_time, e.duration, e.location
             FROM notifications n
             JOIN events e ON n.event_id = e.event_id
             WHERE n.user_id = %s AND n.is_read = FALSE
@@ -49,12 +49,12 @@ def volunteer_home():
         # Get upcoming events the volunteer is registered for
         cursor.execute(
             """
-            SELECT e.event_name, e.location, e.event_date, e.event_time
+            SELECT e.event_name, e.location, e.event_date, e.start_time, e.end_time, e.duration
             FROM event_registrations er
             JOIN events e ON er.event_id = e.event_id
             WHERE er.volunteer_id = %s
               AND e.event_date >= CURRENT_DATE
-              AND er.attendance_status = 'registered'
+              AND er.attendance = 'registered'
             ORDER BY e.event_date;
         """,
             (session["user_id"],),
@@ -70,6 +70,7 @@ def volunteer_home():
 
 
 # ==================== BROWSE EVENTS ====================
+# ==================== BROWSE EVENTS ====================
 @app.route("/volunteer/events")
 @login_required
 def browse_events():
@@ -80,7 +81,7 @@ def browse_events():
     filter_type = request.args.get("type", "")
 
     query = """
-        SELECT e.*, z.zone_name,
+        SELECT e.*,
                (SELECT COUNT(*) FROM event_registrations 
                 WHERE event_id = e.event_id) as volunteer_count
     """
@@ -101,21 +102,22 @@ def browse_events():
 
     query += """
         FROM events e
-        LEFT JOIN cleanup_zones z ON e.zone_id = z.zone_id
         WHERE e.event_date >= CURRENT_DATE
     """
 
     if filter_date:
         query += " AND e.event_date = %s"
         params.append(filter_date)
+
     if filter_location:
-        query += " AND (e.location ILIKE %s OR z.zone_name ILIKE %s)"
-        params.extend([f"%{filter_location}%", f"%{filter_location}%"])
+        query += " AND e.location ILIKE %s"
+        params.append(f"%{filter_location}%")  # Only add ONE parameter, not two
+
     if filter_type:
-        query += " AND z.zone_name ILIKE %s"
+        query += " AND e.event_type ILIKE %s"
         params.append(f"%{filter_type}%")
 
-    query += " ORDER BY e.event_date, e.event_time;"
+    query += " ORDER BY e.event_date, e.start_time;"
 
     with db.get_cursor() as cursor:
         cursor.execute(query, tuple(params) if params else None)
@@ -125,15 +127,14 @@ def browse_events():
         cursor.execute("SELECT DISTINCT location FROM events ORDER BY location;")
         locations = cursor.fetchall()
 
-        # Get zone types for filter dropdown
-        cursor.execute("SELECT zone_name FROM cleanup_zones ORDER BY zone_name;")
-        zone_types = cursor.fetchall()
+        cursor.execute("SELECT DISTINCT event_type FROM events ORDER BY event_type;")
+        event_types = cursor.fetchall()
 
     return render_template(
         "browse_events.html",
         events=events,
         locations=locations,
-        zone_types=zone_types,
+        event_types=event_types,
         filter_date=filter_date,
         filter_location=filter_location,
         filter_type=filter_type,
@@ -150,7 +151,7 @@ def register_for_event(event_id):
         # Get event details
         cursor.execute(
             """
-            SELECT event_date, event_time, duration_hours, event_name 
+            SELECT event_date, start_time, end_time, duration, event_name 
             FROM events WHERE event_id = %s;
         """,
             (event_id,),
@@ -164,12 +165,12 @@ def register_for_event(event_id):
         # Check for scheduling conflicts
         cursor.execute(
             """
-            SELECT e.event_name, e.event_date, e.event_time
+            SELECT e.event_name, e.event_date, e.start_time, e.end_time, e.duration
             FROM event_registrations er
             JOIN events e ON er.event_id = e.event_id
             WHERE er.volunteer_id = %s 
               AND e.event_date = %s
-              AND er.attendance_status != 'absent';
+              AND er.attendance != 'absent';
         """,
             (session["user_id"], event["event_date"]),
         )
@@ -207,24 +208,33 @@ def participation_history():
     with db.get_cursor() as cursor:
         cursor.execute(
             """
-            SELECT e.event_id, e.event_name, e.location, e.event_date, e.event_time,
-                   er.attendance_status, er.bags_collected, er.recyclables_sorted,
+            SELECT e.event_id, e.event_name, e.location, e.event_type, e.event_date, e.start_time,
+                   er.attendance,
+                   COALESCE(eo.bags_collected, 0) as bags_collected,
+                   COALESCE(eo.recyclables_sorted, 0) as recyclables_sorted,
                    f.rating, f.comments as feedback_comment,
                    CASE WHEN f.feedback_id IS NOT NULL THEN TRUE ELSE FALSE END as has_feedback
             FROM event_registrations er
             JOIN events e ON er.event_id = e.event_id
+            LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
             LEFT JOIN feedback f ON er.event_id = f.event_id AND er.volunteer_id = f.volunteer_id
             WHERE er.volunteer_id = %s
             ORDER BY e.event_date DESC;
-        """,
+            """,
             (session["user_id"],),
         )
         history = cursor.fetchall()
 
+        # Convert None values to 0 for numeric fields
+        for record in history:
+            if record["bags_collected"] is None:
+                record["bags_collected"] = 0
+            if record["recyclables_sorted"] is None:
+                record["recyclables_sorted"] = 0
+
     return render_template("participation_history.html", history=history)
 
 
-# ==================== SUBMIT FEEDBACK ====================
 @app.route("/volunteer/feedback/<int:event_id>", methods=["GET", "POST"])
 @login_required
 @role_required("volunteer")
@@ -234,9 +244,9 @@ def submit_feedback(event_id):
     with db.get_cursor() as cursor:
         cursor.execute(
             """
-            SELECT attendance_status FROM event_registrations
+            SELECT attendance FROM event_registrations
             WHERE event_id = %s AND volunteer_id = %s;
-        """,
+            """,
             (event_id, session["user_id"]),
         )
         registration = cursor.fetchone()
@@ -245,7 +255,7 @@ def submit_feedback(event_id):
             flash("You are not registered for this event.", "error")
             return redirect(url_for("participation_history"))
 
-        if registration["attendance_status"] != "attended":
+        if registration["attendance"] != "attended":
             flash("You can only provide feedback for events you attended.", "warning")
             return redirect(url_for("participation_history"))
 
@@ -261,7 +271,7 @@ def submit_feedback(event_id):
                     VALUES (%s, %s, %s, %s)
                     ON CONFLICT (event_id, volunteer_id) 
                     DO UPDATE SET rating = %s, comments = %s, submitted_at = CURRENT_TIMESTAMP;
-                """,
+                    """,
                     (event_id, session["user_id"], rating, comments, rating, comments),
                 )
                 flash("Thank you for your feedback!", "success")
@@ -274,7 +284,7 @@ def submit_feedback(event_id):
         cursor.execute(
             """
             SELECT event_name, event_date FROM events WHERE event_id = %s;
-        """,
+            """,
             (event_id,),
         )
         event = cursor.fetchone()
@@ -282,7 +292,6 @@ def submit_feedback(event_id):
     return render_template("submit_feedback.html", event=event, event_id=event_id)
 
 
-# ==================== CANCEL REGISTRATION ====================
 @app.route("/volunteer/cancel/<int:event_id>", methods=["POST"])
 @login_required
 @role_required("volunteer")
@@ -294,7 +303,7 @@ def cancel_registration(event_id):
             """
             SELECT event_name FROM events 
             WHERE event_id = %s AND event_date >= CURRENT_DATE;
-        """,
+            """,
             (event_id,),
         )
         event = cursor.fetchone()
@@ -308,7 +317,7 @@ def cancel_registration(event_id):
             """
             DELETE FROM event_registrations
             WHERE event_id = %s AND volunteer_id = %s;
-        """,
+            """,
             (event_id, session["user_id"]),
         )
 
