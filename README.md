@@ -1,8 +1,8 @@
 # EcoCleanUp Hub - Community Cleanup Management System
 A web-based platform for managing community cleanup events, built with Python Flask and PostgreSQL. This system enables volunteers to discover and register for cleanup events, event leaders to organize and track events, and administrators to oversee the entire platform.
 
-## 🌱 Live Demo
-[EcoCleanUp Hub](lukewang639.pythonanywhere.com)
+## Live Demo
+[EcoCleanUp Hub](https://lukewang639.pythonanywhere.com)
 
 ## 🛠️ Technology Stack
 Backend: Python, Flask
