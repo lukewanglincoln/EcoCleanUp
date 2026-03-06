@@ -1,6 +1,6 @@
 {% extends 'userbase.html' %}
 
-{% block title %}Event Volunteers - EcoCleanUp{% endblock %}
+{% block title %}Event Volunteers - {{ event.event_name }}{% endblock %}
 
 {% set active_page = 'home' %}
 
@@ -8,13 +8,32 @@
 <div class="container py-4">
     <div class="row">
         <div class="col-12">
-            <h1 class="display-5 mb-2">{{ event.event_name }}</h1>
-            <p class="text-muted mb-4">
-                <i class="bi bi-calendar"></i> {{ event.event_date.strftime('%B %d, %Y') }}<br>
-                <i class="bi bi-clock"></i> {{ event.start_time.strftime('%I:%M %p') }} to {{ event.end_time.strftime('%I:%M %p') }}<br>
-                <i class="bi bi-geo-alt"></i> {{ event.location }}<br>
-                <i class="bi bi-tag"></i> {{ event.event_type }}
-            </p>
+            <!-- Event Header -->
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <h1 class="display-5 mb-2">{{ event.event_name }}</h1>
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-calendar"></i> {{ event.event_date.strftime('%B %d, %Y') }}<br>
+                        <i class="bi bi-clock"></i> {{ event.start_time.strftime('%I:%M %p') }} to {{ event.end_time.strftime('%I:%M %p') }}<br>
+                        <i class="bi bi-geo-alt"></i> {{ event.location }}<br>
+                        <i class="bi bi-tag"></i> {{ event.event_type }}
+                    </p>
+                </div>
+                <div>
+                    <span class="badge bg-{{ 'success' if event.status == 'completed' else 'primary' if event.status == 'upcoming' else 'danger' }} p-3 fs-6">
+                        {{ event.status|upper }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Event Leader Info (for admin view) -->
+            {% if is_admin %}
+            <div class="alert alert-info mb-4">
+                <i class="bi bi-person-badge"></i>
+                <strong>Event Leader:</strong> {{ event.event_leader_name }} 
+                <span class="text-muted">(@{{ event.event_leader_username }})</span>
+            </div>
+            {% endif %}
 
             <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -29,104 +48,162 @@
             {% endwith %}
 
             <!-- Action Buttons -->
-            <div class="mb-3">
-                <a href="{{ url_for('manage_events') }}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Back to Events
-                </a>
-                
-                {% if event.event_date < current_date %}
-                <a href="{{ url_for('record_event_outcomes', event_id=event.event_id) }}" 
-                class="btn btn-success">
-                    <i class="bi bi-clipboard-data"></i> Record Event Outcomes
-                </a>
+            <div class="mb-4">
+                {% if is_admin %}
+                    <a href="{{ url_for('admin_manage_events') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to All Events
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('manage_events') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to My Events
+                    </a>
                 {% endif %}
                 
-                {% if event.event_date >= current_date %}
-                <form method="POST" action="{{ url_for('send_event_reminder', event_id=event.event_id) }}"
-                    class="d-inline">
-                    <button type="submit" class="btn btn-warning"
-                        onclick="return confirm('Send reminder to all registered volunteers?')">
-                        <i class="bi bi-bell"></i> Send Reminder
-                    </button>
-                </form>
+                {% if event.event_date < current_date and not is_admin %}
+                    <a href="{{ url_for('record_event_outcomes', event_id=event.event_id) }}" 
+                       class="btn btn-success">
+                        <i class="bi bi-clipboard-data"></i> Record Event Outcomes
+                    </a>
+                {% endif %}
+                
+                {% if event.event_date >= current_date and not is_admin %}
+                    <form method="POST" action="{{ url_for('send_event_reminder', event_id=event.event_id) }}"
+                          class="d-inline">
+                        <button type="submit" class="btn btn-warning"
+                                onclick="return confirm('Send reminder to all registered volunteers?')">
+                            <i class="bi bi-bell"></i> Send Reminder
+                        </button>
+                    </form>
+                {% endif %}
+
+                {% if is_admin and event.event_date < current_date and not event.bags_collected %}
+                    <a href="{{ url_for('record_event_outcomes', event_id=event.event_id) }}" 
+                       class="btn btn-outline-info">
+                        <i class="bi bi-clipboard-data"></i> Record Outcomes
+                    </a>
                 {% endif %}
             </div>
 
             <!-- Volunteers List -->
             {% if volunteers %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-success">
-                        <tr>
-                            <th>Name</th>
-                            <th>Contact</th>
-                            <th>Registered On</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for volunteer in volunteers %}
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    {% if volunteer.profile_image and volunteer.profile_image != 'default_profile.jpg' %}
-                                        <img src="{{ url_for('static', filename='uploads/' + volunteer.profile_image) }}" 
-                                            class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;">
-                                    {% else %}
-                                        <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2" 
-                                            style="width: 30px; height: 30px; font-size: 1rem;">
-                                            {{ volunteer.full_name[0] }}
-                                        </div>
-                                    {% endif %}
-                                    <div>
-                                        <a href="{{ url_for('event_leader_view_volunteer_history', volunteer_id=volunteer.user_id) }}" class="text-decoration-none"> 
-                                            <strong>{{ volunteer.full_name }}</strong><br>
-                                        </a>
-                                        <small class="text-muted">@{{ volunteer.username }}</small>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                {{ volunteer.email }}<br>
-                                <small>{{ volunteer.contact_number }}</small>
-                            </td>
-                            <td>{{ volunteer.registration_date.strftime('%b %d, %Y') }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('track_attendance', event_id=event.event_id) }}" class="d-inline">
-                                    <input type="hidden" name="volunteer_id" value="{{ volunteer.user_id }}">
-                                    <select name="attendance_status" class="form-select form-select-sm" style="width: 120px;" onchange="this.form.submit()">
-                                        <option value="registered" {% if volunteer.attendance == 'registered' %}selected{% endif %}>Registered</option>
-                                        <option value="attended" {% if volunteer.attendance == 'attended' %}selected{% endif %}>Attended</option>
-                                        <option value="absent" {% if volunteer.attendance == 'absent' %}selected{% endif %}>Absent</option>
-                                    </select>
-                                </form>
-                            </td>
-                            <td>
-                                <div class="btn-group" role="group">
-                                    <form method="POST" action="{{ url_for('remove_volunteer', event_id=event.event_id, volunteer_id=volunteer.user_id) }}" class="d-inline">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" 
-                                                onclick="return confirm('Remove this volunteer from the event?')"
-                                                title="Remove">
-                                            <i class="bi bi-person-x"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-people"></i> 
+                            Registered Volunteers ({{ volunteers|length }})
+                        </h5>
+                        {% if not is_admin and event.event_date >= current_date %}
+                            <small class="text-white">You can manage attendance below</small>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Volunteer</th>
+                                        <th>Contact</th>
+                                        <th>Registered On</th>
+                                        <th>Status</th>
+                                        {% if not is_admin %}
+                                            <th>Actions</th>
+                                        {% endif %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for volunteer in volunteers %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if volunteer.profile_image and volunteer.profile_image != 'default_profile.jpg' %}
+                                                    <img src="{{ url_for('static', filename='uploads/' + volunteer.profile_image) }}" 
+                                                         class="rounded-circle me-2" style="width: 35px; height: 35px; object-fit: cover;">
+                                                {% else %}
+                                                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2" 
+                                                         style="width: 35px; height: 35px; font-size: 1rem;">
+                                                        {{ volunteer.full_name[0] }}
+                                                    </div>
+                                                {% endif %}
+                                                <div>
+                                                    {% if is_admin %}
+                                                        <a href="{{ url_for('admin_view_volunteer_history', volunteer_id=volunteer.user_id) }}" 
+                                                           class="text-decoration-none fw-bold">
+                                                            {{ volunteer.full_name }}
+                                                        </a>
+                                                    {% else %}
+                                                        <a href="{{ url_for('event_leader_view_volunteer_history', volunteer_id=volunteer.user_id) }}" 
+                                                           class="text-decoration-none fw-bold">
+                                                            {{ volunteer.full_name }}
+                                                        </a>
+                                                    {% endif %}
+                                                    <br>
+                                                    <small class="text-muted">@{{ volunteer.username }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <i class="bi bi-envelope"></i> {{ volunteer.email }}<br>
+                                            <i class="bi bi-telephone"></i> <small>{{ volunteer.contact_number }}</small>
+                                        </td>
+                                        <td>
+                                            <i class="bi bi-calendar-check"></i> 
+                                            {{ volunteer.registration_date.strftime('%b %d, %Y') }}
+                                        </td>
+                                        <td>
+                                            {% if is_admin %}
+                                                <!-- Admin view - read-only status -->
+                                                {% if volunteer.attendance == 'attended' %}
+                                                    <span class="badge bg-success">Attended</span>
+                                                {% elif volunteer.attendance == 'registered' %}
+                                                    <span class="badge bg-warning text-dark">Registered</span>
+                                                {% elif volunteer.attendance == 'absent' %}
+                                                    <span class="badge bg-danger">Absent</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">{{ volunteer.attendance }}</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <!-- Event leader view - editable status -->
+                                                <form method="POST" action="{{ url_for('track_attendance', event_id=event.event_id) }}" class="d-inline">
+                                                    <input type="hidden" name="volunteer_id" value="{{ volunteer.user_id }}">
+                                                    <select name="attendance_status" class="form-select form-select-sm" style="width: 120px;" onchange="this.form.submit()">
+                                                        <option value="registered" {% if volunteer.attendance == 'registered' %}selected{% endif %}>📝 Registered</option>
+                                                        <option value="attended" {% if volunteer.attendance == 'attended' %}selected{% endif %}>✅ Attended</option>
+                                                        <option value="absent" {% if volunteer.attendance == 'absent' %}selected{% endif %}>❌ Absent</option>
+                                                    </select>
+                                                </form>
+                                            {% endif %}
+                                        </td>
+                                        {% if not is_admin %}
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <form method="POST" action="{{ url_for('remove_volunteer', event_id=event.event_id, volunteer_id=volunteer.user_id) }}" 
+                                                      class="d-inline" 
+                                                      onsubmit="return confirm('Are you sure you want to remove {{ volunteer.full_name }} from this event?');">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                            title="Remove Volunteer">
+                                                        <i class="bi bi-person-x"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             {% else %}
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle-fill"></i> No volunteers have registered for this event yet.
-            </div>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill"></i> 
+                    No volunteers have registered for this event yet.
+                </div>
             {% endif %}
 
             <!-- Event Outcomes Summary -->
             {% if event.bags_collected is not none %}
-                <div class="card mt-4 border-success">
+                <div class="card border-success">
                     <div class="card-header bg-success text-white">
                         <h5 class="mb-0">
                             <i class="bi bi-bar-chart"></i> Event Impact Summary
@@ -170,21 +247,124 @@
                             <strong>Other Achievements:</strong> {{ event.other_achievements }}
                         </div>
                         {% endif %}
+
+                        {% if is_admin %}
+                        <div class="mt-3 text-muted small">
+                            <i class="bi bi-info-circle"></i>
+                            Recorded by event leader on {{ event.recorded_at.strftime('%B %d, %Y') if event.recorded_at else 'Unknown date' }}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             {% else %}
                 <div class="alert alert-info mt-4">
                     <i class="bi bi-info-circle-fill"></i> 
                     Outcomes haven't been recorded for this event yet.
-                    {% if event.event_date < current_date %}
-                    <a href="{{ url_for('record_event_outcomes', event_id=event.event_id) }}" class="alert-link">
-                        Record outcomes now
-                    </a>.
+                    {% if event.event_date < current_date and not is_admin %}
+                        <a href="{{ url_for('record_event_outcomes', event_id=event.event_id) }}" class="alert-link">
+                            Record outcomes now
+                        </a>.
+                    {% elif event.event_date < current_date and is_admin %}
+                        <span class="text-muted">Event leader needs to record outcomes.</span>
                     {% endif %}
                 </div>
             {% endif %}
 
+            <!-- Quick Stats Card -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="text-success">{{ volunteers|length }}</h5>
+                            <small class="text-muted">Total Registered</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="text-success">{{ volunteers|selectattr('attendance', 'equalto', 'attended')|list|length }}</h5>
+                            <small class="text-muted">Attended</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="text-success">{{ volunteers|selectattr('attendance', 'equalto', 'registered')|list|length }}</h5>
+                            <small class="text-muted">Pending</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h5 class="text-success">{{ volunteers|selectattr('attendance', 'equalto', 'absent')|list|length }}</h5>
+                            <small class="text-muted">Absent</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Add some custom styling -->
+<style>
+    .btn-group .btn {
+        margin-right: 2px;
+    }
+    .btn-group .btn:last-child {
+        margin-right: 0;
+    }
+    .table td {
+        vertical-align: middle;
+    }
+    .badge {
+        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
+    }
+    .card {
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .card-header {
+        border-radius: 10px 10px 0 0 !important;
+    }
+    .bg-success {
+        background-color: #2e7d32 !important;
+    }
+    .text-success {
+        color: #2e7d32 !important;
+    }
+    .btn-success {
+        background-color: #2e7d32;
+        border-color: #2e7d32;
+    }
+    .btn-success:hover {
+        background-color: #1b5e20;
+        border-color: #1b5e20;
+    }
+    .btn-outline-success {
+        color: #2e7d32;
+        border-color: #2e7d32;
+    }
+    .btn-outline-success:hover {
+        background-color: #2e7d32;
+        border-color: #2e7d32;
+    }
+    .table-warning {
+        background-color: #fff3e0;
+    }
+    @media print {
+        .btn, .navbar, footer {
+            display: none !important;
+        }
+        .card {
+            break-inside: avoid;
+            border: 1px solid #000 !important;
+        }
+    }
+</style>
 {% endblock %}

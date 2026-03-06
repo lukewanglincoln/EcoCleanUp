@@ -1,6 +1,6 @@
 {% extends 'userbase.html' %}
 
-{% block title %}Volunteer History - {{ volunteer.full_name }}{% endblock %}
+{% block title %}User History - {{ volunteer.full_name }}{% endblock %}
 
 {% set active_page = 'home' %}
 
@@ -27,10 +27,10 @@
                     <h4 class="mb-0">
                         {% if is_admin %}
                             <i class="bi bi-person-badge"></i> 
-                            Volunteer History: {{ volunteer.full_name }}
+                            User History: {{ volunteer.full_name }}
                         {% else %}
                             <i class="bi bi-clock-history"></i> 
-                            Volunteer History: {{ volunteer.full_name }}
+                            User History: {{ volunteer.full_name }}
                         {% endif %}
                     </h4>
                 </div>
@@ -298,7 +298,7 @@
                     {% else %}
                         <div class="alert alert-info">
                             <i class="bi bi-info-circle-fill"></i> 
-                            This volunteer hasn't participated in any events yet.
+                            This user has not participated in any events yet.
                         </div>
                     {% endif %}
                 </div>

@@ -143,25 +143,9 @@
                                         </a>
                                    
                                         {% if event.volunteer_count and event.volunteer_count > 0 %}
-                                            <a href="{{ url_for('view_event_volunteers', event_id=event.event_id) }}" 
+                                            <a href="{{ url_for('admin_view_event_volunteers', event_id=event.event_id) }}" 
                                                 class="btn btn-sm btn-outline-success" title="View Volunteers">
                                                 <i class="bi bi-people"></i>
-                                            </a>
-                                        {% endif %}
-                                        
-                                        <!-- Record Outcomes button - only for past completed events without outcomes -->
-                                        {% if event.status == 'completed' and not event.bags_collected %}
-                                            <a href="{{ url_for('record_event_outcomes', event_id=event.event_id) }}" 
-                                               class="btn btn-sm btn-outline-info" title="Record Outcomes">
-                                                <i class="bi bi-clipboard-data"></i>
-                                            </a>
-                                        {% endif %}
-                                        
-                                        <!-- View Outcomes button - for events with recorded outcomes -->
-                                        {% if event.bags_collected %}
-                                            <a href="{{ url_for('record_event_outcomes', event_id=event.event_id) }}" 
-                                               class="btn btn-sm btn-outline-secondary" title="View Outcomes">
-                                                <i class="bi bi-eye"></i>
                                             </a>
                                         {% endif %}
                                         

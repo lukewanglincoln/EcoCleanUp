@@ -152,6 +152,57 @@ def admin_manage_events():
     )
 
 
+# ==================== VIEW EVENT VOLUNTEERS (ADMIN) ====================
+@app.route("/admin/events/<int:event_id>/volunteers")
+@login_required
+@role_required("admin")
+def admin_view_event_volunteers(event_id):
+    """Admin view list of volunteers registered for an event."""
+    with db.get_cursor() as cursor:
+        # Get event details including outcomes - NO event_leader_id filter for admin
+        cursor.execute(
+            """
+            SELECT e.*, u.full_name as event_leader_name, u.username as event_leader_username,
+                   eo.bags_collected, eo.recyclables_sorted, eo.number_attendees,
+                   eo.other_achievements
+            FROM events e
+            JOIN users u ON e.event_leader_id = u.user_id
+            LEFT JOIN event_outcomes eo ON e.event_id = eo.event_id
+            WHERE e.event_id = %s;
+            """,
+            (event_id,),
+        )
+        event = cursor.fetchone()
+
+        if not event:
+            flash("Event not found.", "error")
+            return redirect(url_for("admin_manage_events"))
+
+        # Get registered volunteers
+        cursor.execute(
+            """
+            SELECT u.user_id, u.username, u.full_name, u.email, u.contact_number,
+                   u.profile_image,
+                   er.registration_date, er.attendance
+            FROM event_registrations er
+            JOIN users u ON er.volunteer_id = u.user_id
+            WHERE er.event_id = %s
+            ORDER BY er.registration_date;
+            """,
+            (event_id,),
+        )
+        volunteers = cursor.fetchall()
+
+    current_date = datetime.now().date()
+    return render_template(
+        "event_volunteers.html",
+        event=event,
+        volunteers=volunteers,
+        current_date=current_date,
+        is_admin=True,  # Pass this flag to template
+    )
+
+
 @app.route("/admin/volunteers/<int:volunteer_id>/history")
 @login_required
 @role_required("admin")
@@ -162,7 +213,7 @@ def admin_view_volunteer_history(volunteer_id):
         cursor.execute(
             """
             SELECT user_id, username, full_name, email, contact_number, profile_image 
-            FROM users WHERE user_id = %s AND role = 'volunteer';
+            FROM users WHERE user_id = %s;
             """,
             (volunteer_id,),
         )
