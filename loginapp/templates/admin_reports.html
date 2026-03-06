@@ -69,6 +69,7 @@
                                     <th>Username</th>
                                     <th>Events Attended</th>
                                     <th>Bags Collected</th>
+                                    <th>Recyclables Collected</th>
                                     <th>Avg Rating</th>
                                 </tr>
                             </thead>
@@ -80,6 +81,7 @@
                                     <td>{{ volunteer.username }}</td>
                                     <td>{{ volunteer.events_attended }}</td>
                                     <td>{{ volunteer.total_bags }}</td>
+                                    <td>{{ volunteer.total_recyclables }}</td>
                                     <td>
                                         {% if volunteer.avg_rating %}
                                         {% for i in range(5) %}
@@ -101,49 +103,6 @@
                     </div>
                     {% else %}
                     <p class="text-muted mb-0">No volunteer data available.</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Zone Statistics -->
-            <div class="card mb-4">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Zone Performance</h5>
-                </div>
-                <div class="card-body">
-                    {% if zone_stats %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Zone</th>
-                                    <th>Events</th>
-                                    <th>Unique Volunteers</th>
-                                    <th>Bags Collected</th>
-                                    <th>Avg Bags/Event</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for zone in zone_stats %}
-                                <tr>
-                                    <td>{{ zone.zone_name }}</td>
-                                    <td>{{ zone.events or 0 }}</td>
-                                    <td>{{ zone.unique_volunteers or 0 }}</td>
-                                    <td>{{ zone.bags_collected }}</td>
-                                    <td>
-                                        {% if zone.events and zone.events > 0 %}
-                                        {{ (zone.bags_collected / zone.events)|round(1) }}
-                                        {% else %}
-                                        0
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <p class="text-muted mb-0">No zone data available.</p>
                     {% endif %}
                 </div>
             </div>

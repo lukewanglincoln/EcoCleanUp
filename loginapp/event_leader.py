@@ -158,7 +158,10 @@ def create_event():
             ]
         ):
             error = "Please fill in all required fields."
-        elif datetime.strptime(event_date, "%Y-%m-%d").date() < datetime.now().date():
+        elif (
+            event_date
+            and datetime.strptime(event_date, "%Y-%m-%d").date() < datetime.now().date()
+        ):
             error = "Event date must be in the future."
 
         if error:
